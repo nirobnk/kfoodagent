@@ -1,0 +1,15 @@
+# Cloudflare reads this file from the build output and applies it at the edge.
+# It replaces the headers() block in next.config.mjs, which a static export
+# ignores because there is no Next server left to set them.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Hashed build assets are immutable — safe to cache hard.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/products/*
+  Cache-Control: public, max-age=86400
