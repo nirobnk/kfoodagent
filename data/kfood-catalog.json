@@ -1,0 +1,1820 @@
+{
+  "meta": {
+    "exportedFor": "RAG ingestion",
+    "exportedAt": "2026-09-14",
+    "source": "https://kfoods.lk (static site, /Users/niroshan/Desktop/kfood/static/kfood)"
+  },
+  "site": {
+    "business": {
+      "legalAccountName": "Kumarasinghe H G B N",
+      "tradingName": "K FOOD",
+      "alternateNames": [
+        "K FOOD Sri Lanka",
+        "kfoods.lk",
+        "KFood",
+        "K Foods"
+      ],
+      "website": "https://kfoods.lk/",
+      "logo": "https://kfoods.lk/images/kfood-logo.png",
+      "heroImage": "https://kfoods.lk/images/hero-ramen.webp",
+      "description": "Buy Korean ramen online at the best price in Sri Lanka. Shin Ramyun, Hot Dak fire noodles, cup ramyeon and Korean drinks with island-wide delivery.",
+      "type": "OnlineStore",
+      "currency": "LKR",
+      "priceRange": "LKR 560 – LKR 17,900",
+      "areaServed": "Sri Lanka (all 25 districts)",
+      "inLanguage": "en-LK",
+      "contact": {
+        "whatsapp": {
+          "number": "94753414084",
+          "displayNumber": "075 341 4084",
+          "link": "https://wa.me/94753414084",
+          "note": "Orders, stock checks and delivery questions — the fastest way to reach us."
+        },
+        "email": {
+          "address": "kfoodslk@gmail.com",
+          "note": "We reply to email within one working day."
+        },
+        "social": {
+          "facebook": "https://web.facebook.com/kfoodslk",
+          "instagram": "https://www.instagram.com/kfoodslk/",
+          "tiktok": "https://www.tiktok.com/@kfoodslk"
+        }
+      },
+      "payment": {
+        "methods": [
+          "Bank Transfer"
+        ],
+        "cardPaymentAvailable": false,
+        "bankDetails": {
+          "bank": "Hatton National Bank (HNB)",
+          "branch": "Alawwa",
+          "accountName": "Kumarasinghe H G B N",
+          "accountNumber": "123020163895"
+        },
+        "process": "Checkout sends the order to K FOOD's WhatsApp Business number. K FOOD confirms stock and total, the customer pays by bank transfer and sends the receipt on WhatsApp, then the order is dispatched."
+      },
+      "delivery": {
+        "coverage": "All 25 districts of Sri Lanka, island-wide",
+        "fee": 400,
+        "feeCurrency": "LKR",
+        "freeDeliveryThreshold": 5000,
+        "freeDeliveryCurrency": "LKR",
+        "estimatedTime": "2-4 days",
+        "minimumOrder": "None — orders can be a single item up to a full carton"
+      },
+      "returnsPolicy": {
+        "window": "7 days from delivery",
+        "process": "Message K FOOD on WhatsApp within 7 days of delivery. If an item is damaged, expired or wrong, K FOOD collects it at their cost and sends a replacement or a full refund.",
+        "conditions": "Unopened items in original condition can be returned within the 7-day window. Opened food packs cannot be returned, for food-safety reasons."
+      },
+      "authenticity": "Genuine Nongshim, Migawon, Binggrae and OKF products imported from South Korea. Every product page lists the pack's ingredients and allergens.",
+      "howToOrder": [
+        {
+          "step": 1,
+          "title": "Fill your cart",
+          "text": "Pick whatever you like — singles, 5 Packs, cartons or drinks. No minimum order."
+        },
+        {
+          "step": 2,
+          "title": "Add your address",
+          "text": "Enter your name, phone and delivery address at checkout. Anywhere in Sri Lanka."
+        },
+        {
+          "step": 3,
+          "title": "Send on WhatsApp",
+          "text": "Checkout opens WhatsApp with your order ready to send. K FOOD confirms stock and delivery."
+        },
+        {
+          "step": 4,
+          "title": "Pay & receive",
+          "text": "Pay by bank transfer once the total is confirmed — account details are on the checkout page. The order is then dispatched."
+        }
+      ]
+    },
+    "faq": [
+      {
+        "question": "Where does K FOOD deliver?",
+        "answer": "Everywhere in Sri Lanka — Colombo, Kandy, Galle, Kurunegala, Gampaha, Malabe, Kegalle, Matara, Anuradhapura, Jaffna and all 25 districts. Courier is a flat LKR 400 island-wide and free on orders over LKR 5,000. Most orders arrive in 2–4 days."
+      },
+      {
+        "question": "Is there a minimum order?",
+        "answer": "No minimum — order as much or as little as you like, from a single pack or one drink to a full carton. Delivery is flat LKR 400 island-wide and free over LKR 5,000."
+      },
+      {
+        "question": "How do I pay?",
+        "answer": "After the order is sent on WhatsApp, K FOOD confirms the total, then payment is made by bank transfer to Hatton National Bank (HNB), Alawwa branch, account name Kumarasinghe H G B N, account number 123020163895. Send the receipt on WhatsApp and the order is dispatched. There is no online card payment at this stage."
+      },
+      {
+        "question": "What if something arrives damaged?",
+        "answer": "Message K FOOD on WhatsApp within 7 days of delivery. If an item is damaged, expired or wrong, K FOOD collects it at their cost and sends a replacement or a full refund. Unopened items in original condition can be returned in the same window; opened food packs can't be returned, for food-safety reasons."
+      },
+      {
+        "question": "Are these the real Korean products?",
+        "answer": "Yes — genuine Nongshim, Migawon, Binggrae and OKF products imported from South Korea. Every product page lists the pack's ingredients and allergens."
+      },
+      {
+        "question": "What is the Shin Ramyun price in Sri Lanka at K FOOD?",
+        "answer": "Shin Ramyun Original 120g is LKR 650 per pack, LKR 3,250 for a 5 Pack and LKR 13,000 for a 20-pack carton at kfoods.lk. Most Korean ramen packs here are LKR 650–895, and every product page lists the best price for singles, 5 Packs and cartons."
+      },
+      {
+        "question": "Is kfoods.lk an online-only store?",
+        "answer": "Yes — kfoods.lk is an online Korean food store for Sri Lanka. Orders are placed on the website, confirmed on WhatsApp (075 341 4084), and couriered island-wide."
+      },
+      {
+        "question": "Does K FOOD deliver Korean ramen island-wide in Sri Lanka?",
+        "answer": "Yes. K FOOD (kfoods.lk) delivers Korean ramyeon and drinks to every district in Sri Lanka. Delivery is a flat LKR 400 island-wide and free for orders over LKR 5,000. Orders arrive in 2–4 days."
+      },
+      {
+        "question": "What is K FOOD's return policy?",
+        "answer": "If an item arrives damaged, expired or is not what was ordered, tell K FOOD on WhatsApp within 7 days of delivery. They collect it at their cost and send a replacement or a full refund. Unopened items in original condition can be returned within the same 7 days; opened food packs cannot be returned for food-safety reasons."
+      }
+    ],
+    "pages": [
+      {
+        "title": "Buy Korean Ramen Online in Sri Lanka | K FOOD",
+        "url": "https://kfoods.lk/",
+        "path": "index.html",
+        "description": "Shop Korean ramen online in Sri Lanka from LKR 560. Compare Shin Ramyun, spicy noodle and cup noodle prices, with island-wide delivery from K FOOD."
+      },
+      {
+        "title": "Korean Ramen Price in Sri Lanka | K FOOD Price List",
+        "url": "https://kfoods.lk/korean-ramen-price-sri-lanka.html",
+        "path": "korean-ramen-price-sri-lanka.html",
+        "description": "Compare Korean ramen prices in Sri Lanka from LKR 560. See current Shin Ramyun, spicy noodle, cup noodle, 5-pack and carton prices and order online.",
+        "sections": [
+          "Korean ramen and noodle price list",
+          "Shin Ramyun price in Sri Lanka",
+          "Spicy Korean noodles and cheese ramen",
+          "Korean cup noodles in Sri Lanka",
+          "How to order Korean ramen online",
+          "Korean ramen prices and delivery"
+        ]
+      },
+      {
+        "title": "Cart & Checkout",
+        "url": "https://kfoods.lk/cart.html",
+        "path": "cart.html",
+        "description": "Shopping cart and WhatsApp checkout page. No order minimum; checkout builds a WhatsApp order message."
+      }
+    ]
+  },
+  "catalog": {
+    "storeMeta": {
+      "name": "K FOOD",
+      "site": "https://kfoods.lk",
+      "currency": "LKR",
+      "whatsapp": "94753414084",
+      "noodleCategories": [
+        "Instant Noodles",
+        "Cup Noodles"
+      ]
+    },
+    "generated": "2026-08-29",
+    "count": 30,
+    "categories": [
+      "Instant Noodles",
+      "Cup Noodles",
+      "Beverages"
+    ],
+    "brands": [
+      "Binggrae",
+      "Dong-A",
+      "Migawon",
+      "Nongshim",
+      "OKF"
+    ],
+    "products": [
+      {
+        "handle": "shin-ramyun",
+        "name": "Shin Ramyun Original",
+        "ko": "신라면",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "120g",
+        "heat": 4,
+        "cook": "4-5 mins",
+        "badge": "Best Seller",
+        "image": "images/shin-ramyun-pack.webp",
+        "short": "The beef-and-mushroom broth that made Korean instant noodles famous, with a clean chilli burn that builds as you eat.",
+        "long": "Shin Ramyun has been Korea's best selling instant noodle since 1986, and it is the pack most people mean when they say Korean ramyun. The broth is built on beef and shiitake with a clean gochugaru burn that hits the back of the throat rather than the tongue, and the noodles are thick enough to stay springy right to the bottom of the bowl. It carries around 3,400 Scoville units, which is hot but not punishing.",
+        "serve": "Boil 550ml of water, add the noodles and both sachets, and cook for 4 to 5 minutes. Crack an egg in during the last minute and finish with spring onion.",
+        "ingredients": "Wheat flour, palm oil, potato starch, modified potato starch, salt, hydrolysed soy protein, red chilli pepper, garlic, shiitake mushroom extract, beef bone extract, black pepper, dried spring onion, dried carrot, dried shiitake mushroom.",
+        "allergens": "Contains wheat, soy and beef. May contain milk, egg and fish.",
+        "nutrition": {
+          "basis": "Per 120g pack",
+          "energy": "520 kcal",
+          "fat": "16g",
+          "satFat": "8g",
+          "carbs": "83g",
+          "fibre": "3g",
+          "sugars": "3g",
+          "protein": "11g",
+          "sodium": "1970mg"
+        },
+        "variants": [
+          {
+            "sku": "RAM-SHIN-1",
+            "label": "Single Pack",
+            "price": 650,
+            "units": 1,
+            "unitPrice": 650
+          },
+          {
+            "sku": "RAM-SHIN-5",
+            "label": "5 Pack",
+            "price": 3250,
+            "units": 5,
+            "unitPrice": 650
+          },
+          {
+            "sku": "RAM-SHIN-20",
+            "label": "Carton (20)",
+            "price": 13000,
+            "units": 20,
+            "unitPrice": 650
+          }
+        ],
+        "fullName": "Nongshim Shin Ramyun Original",
+        "url": "https://kfoods.lk/products/shin-ramyun.html",
+        "priceFrom": 650,
+        "priceTo": 13000,
+        "images": {
+          "main": "https://kfoods.lk/images/shin-ramyun-pack.webp",
+          "thumb": "https://kfoods.lk/images/shin-ramyun-pack.webp",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "shin-ramyun-black",
+        "name": "Shin Ramyun Black",
+        "ko": "신라면 블랙",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "130g",
+        "heat": 3,
+        "cook": "4-5 mins",
+        "badge": "Gourmet",
+        "image": "images/products/nongshim-shin-ramyun-black-premium-v2.jpeg",
+        "short": "The premium Shin, with an added beef bone broth sachet that turns the soup milky and full-bodied.",
+        "long": "Shin Black adds a second sachet of seolleongtang, the slow simmered ox bone broth Koreans eat for breakfast, on top of the standard Shin base. The result is milkier, rounder and noticeably less sharp than the red pack, with sliced shiitake, bok choy and roasted garlic in the vegetable mix. The noodles are thicker too, so it eats more like a restaurant bowl than an instant one.",
+        "serve": "Cook in 550ml of water for 4 to 5 minutes, then stir the seolleongtang sachet in off the heat so the broth stays milky.",
+        "ingredients": "Wheat flour, potato starch, palm oil, ox bone extract powder, beef bone extract, hydrolysed vegetable protein, sliced shiitake mushroom, dried bok choy, garlic powder, red chilli pepper, black pepper, maltodextrin, yeast extract, salt.",
+        "allergens": "Contains wheat, soy and beef. May contain milk, egg and fish.",
+        "nutrition": {
+          "basis": "Per 130g pack",
+          "energy": "570 kcal",
+          "fat": "18g",
+          "satFat": "9g",
+          "carbs": "87g",
+          "fibre": "5g",
+          "sugars": "4g",
+          "protein": "15g",
+          "sodium": "1770mg"
+        },
+        "variants": [
+          {
+            "sku": "RAM-SHIN-BLACK-1",
+            "label": "Single Pack",
+            "price": 895,
+            "units": 1,
+            "unitPrice": 895
+          },
+          {
+            "sku": "RAM-SHIN-BLACK-5",
+            "label": "5 Pack",
+            "price": 4475,
+            "units": 5,
+            "unitPrice": 895
+          },
+          {
+            "sku": "RAM-SHIN-BLACK-20",
+            "label": "Carton (20)",
+            "price": 17900,
+            "units": 20,
+            "unitPrice": 895
+          }
+        ],
+        "fullName": "Nongshim Shin Ramyun Black",
+        "url": "https://kfoods.lk/products/shin-ramyun-black.html",
+        "priceFrom": 895,
+        "priceTo": 17900,
+        "images": {
+          "main": "https://kfoods.lk/images/products/nongshim-shin-ramyun-black-premium-v2.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/nongshim-shin-ramyun-black-premium-v2.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "super-spicy",
+        "name": "Shin Ramyun Red Super Spicy",
+        "ko": "신라면 더 레드",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "125g",
+        "heat": 5,
+        "cook": "4-5 mins",
+        "badge": "2x Spicy",
+        "image": "images/products/nongshim-shin-ramyun-red-super-spicy-v2.jpeg",
+        "short": "A soup ramyun turned all the way up, with a deep red broth and a heavy hand on the gochugaru.",
+        "long": "Roughly twice the heat of the original Shin at about 7,500 Scoville units, built on cheongyang chilli, black pepper and a concentrated beef bone base. A separate spicy oil sachet goes in after cooking so the burn lands sharp instead of dulled by boiling. This is the pack for people who have already worked through the red one and want more.",
+        "serve": "Cook in 550ml of water for 4 to 5 minutes, then add the red seasoning oil at the end. Keep milk or rice nearby.",
+        "ingredients": "Wheat flour, palm oil, potato starch, concentrated beef bone extract, cheongyang red chilli pepper powder, garlic, black pepper, shiitake mushroom, dried beef flakes, spring onion, salt.",
+        "allergens": "Contains wheat, soy and beef. May contain milk, egg and fish.",
+        "nutrition": {
+          "basis": "Per 125g pack",
+          "energy": "535 kcal",
+          "fat": "16g",
+          "satFat": "8g",
+          "carbs": "83g",
+          "fibre": "3g",
+          "sugars": "4g",
+          "protein": "11g",
+          "sodium": "1970mg"
+        },
+        "variants": [
+          {
+            "sku": "RAM-SUPERSPICY-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-SUPERSPICY-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-SUPERSPICY-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Nongshim Shin Ramyun Red Super Spicy",
+        "url": "https://kfoods.lk/products/super-spicy.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/nongshim-shin-ramyun-red-super-spicy-v2.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/nongshim-shin-ramyun-red-super-spicy-v2.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "spicy-chicken",
+        "name": "Shin Ramyun Spicy Chicken",
+        "ko": "신라면 매운치킨",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "120g",
+        "heat": 3,
+        "cook": "4-5 mins",
+        "badge": "Everyday Heat",
+        "image": "images/products/nongdam-shin-ramyun-spicy-chicken-v2.jpeg",
+        "short": "Roasted chicken stock with a steady chilli backbone and a hint of garlic. Comfortable everyday heat rather than a challenge.",
+        "long": "A roasted chicken stock base with a steady chilli backbone and a clear note of garlic behind it. Lighter on the palate than the beef packs and easier to finish, which puts it in everyday territory rather than challenge territory. Good for anyone who finds the original Shin a step too far but still wants real heat.",
+        "serve": "Cook in 550ml of water for 4 to 5 minutes. Shredded chicken and a soft egg suit this broth well.",
+        "ingredients": "Wheat flour, palm oil, potato starch, chicken extract powder, red chilli pepper, garlic, onion, black pepper, dried spring onion, dried carrot, hydrolysed soy protein, yeast extract, salt.",
+        "allergens": "Contains wheat, soy and chicken. May contain milk, egg and fish.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "RAM-SPICYCHICKEN-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-SPICYCHICKEN-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-SPICYCHICKEN-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Nongshim Shin Ramyun Spicy Chicken",
+        "url": "https://kfoods.lk/products/spicy-chicken.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/nongdam-shin-ramyun-spicy-chicken-v2.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/nongdam-shin-ramyun-spicy-chicken-v2.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "stir-fry-spicy",
+        "name": "Shin Ramyun Stir Fry",
+        "ko": "신라면 볶음면",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "131g",
+        "heat": 4,
+        "cook": "3-4 mins",
+        "badge": "Popular",
+        "image": "images/products/nongshim-shin-ramyun-stir-fry-v2.jpeg",
+        "short": "The no-soup version for people who want the chilli undiluted. Thick sauce clings to every strand.",
+        "long": "The Shin flavour without the soup. Extra elastic noodles cook in under four minutes, get drained, then take on a concentrated spicy beef sauce and chilli oil that clings to every strand. Shiitake, bok choy and the little fish cakes stamped with the Shin character come along in the vegetable mix. Undiluted heat, because there is no broth to soften it.",
+        "serve": "Boil for 3 to 4 minutes, drain almost completely, then toss with the sauce and oil sachets over low heat.",
+        "ingredients": "Wheat flour, palm oil, potato starch, chilli seasoning oil, sugar, soy sauce powder, garlic, shiitake mushroom powder, dried fish cake, dried bok choy, black pepper, salt.",
+        "allergens": "Contains wheat, soy, fish and beef. May contain milk, egg and shellfish.",
+        "nutrition": {
+          "basis": "Per 131g pack",
+          "energy": "600 kcal",
+          "fat": "22g",
+          "satFat": "8g",
+          "carbs": "88g",
+          "fibre": "3g",
+          "sugars": "8g",
+          "protein": "11g",
+          "sodium": "1290mg"
+        },
+        "variants": [
+          {
+            "sku": "RAM-STIRFRY-SPICY-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-STIRFRY-SPICY-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-STIRFRY-SPICY-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Nongshim Shin Ramyun Stir Fry",
+        "url": "https://kfoods.lk/products/stir-fry-spicy.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/nongshim-shin-ramyun-stir-fry-v2.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/nongshim-shin-ramyun-stir-fry-v2.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "stir-fry-cheese",
+        "name": "Shin Ramyun Stir Fry Cheese",
+        "ko": "신라면 볶음면 치즈",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "136g",
+        "heat": 3,
+        "cook": "3-4 mins",
+        "badge": "Cheesy & Spicy",
+        "image": "images/products/nongshim-shin-ramyun-stir-fry-cheese-v2.jpeg",
+        "short": "Drained stir-fry noodles tossed in a sweet chilli sauce and finished with a generous cheese powder sachet.",
+        "long": "The same drained stir fry format as the spicy version, with a generous cheddar powder sachet added at the end. The cheese rounds off the chilli without cancelling it, so the heat arrives later and softer. A good bridge for anyone stepping up from Chapagetti towards the properly hot packs.",
+        "serve": "Drain hard, stir the sauce through first, then sprinkle the cheese powder over the top so it melts in streaks rather than dissolving.",
+        "ingredients": "Wheat flour, palm oil, potato starch, cheese seasoning powder (cheddar cheese, whey powder, milk), spicy stir-fry sauce mix, chilli seasoning oil, garlic, dried carrot, dried fish cake, sugar, salt.",
+        "allergens": "Contains wheat, soy, milk and fish. May contain egg and shellfish.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "RAM-STIRFRY-CHEESE-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-STIRFRY-CHEESE-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-STIRFRY-CHEESE-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Nongshim Shin Ramyun Stir Fry Cheese",
+        "url": "https://kfoods.lk/products/stir-fry-cheese.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/nongshim-shin-ramyun-stir-fry-cheese-v2.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/nongshim-shin-ramyun-stir-fry-cheese-v2.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "toomba",
+        "name": "Shin Ramyun Toomba",
+        "ko": "신라면 툼바",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "137g",
+        "heat": 3,
+        "cook": "4 mins",
+        "badge": "Trending",
+        "image": "images/products/nongshim-shin-ramyun-toomba-spicy-creamy.jpeg",
+        "short": "A creamy carbonara-style ramyun that trades soup for a thick, milky cheese sauce.",
+        "long": "Nongshim's official take on the Toowoomba pasta trend that ran through Korean social media. Springy noodles get coated in a thick, milky cheese sauce carrying the Shin chilli underneath, lifted with garlic, mushroom and parsley. Rich enough to feel like a meal on its own, and far and away the most requested of the newer packs.",
+        "serve": "Leave about four spoons of water when draining. The starch in it is what makes the sauce cling properly.",
+        "ingredients": "Wheat flour, palm oil, potato starch, cream powder, cheddar cheese powder, parmesan cheese powder, milk powder, garlic, red chilli powder, black pepper, dried parsley, shiitake mushroom, sugar, salt.",
+        "allergens": "Contains wheat, soy and milk. May contain egg, fish and beef.",
+        "nutrition": {
+          "basis": "Per 137g pack",
+          "energy": "610 kcal",
+          "fat": "24g",
+          "satFat": "12g",
+          "carbs": "89g",
+          "fibre": "2g",
+          "sugars": "6g",
+          "protein": "10g",
+          "sodium": "860mg"
+        },
+        "variants": [
+          {
+            "sku": "RAM-TOOMBA-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-TOOMBA-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-TOOMBA-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Nongshim Shin Ramyun Toomba",
+        "url": "https://kfoods.lk/products/toomba.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/nongshim-shin-ramyun-toomba-spicy-creamy.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/nongshim-shin-ramyun-toomba-spicy-creamy.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "kimchi",
+        "name": "Kimchi Ramyun",
+        "ko": "김치라면",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "120g",
+        "heat": 3,
+        "cook": "4-5 mins",
+        "badge": "Tangy & Spicy",
+        "image": "images/products/placeholder-noodles.svg",
+        "short": "Tangy fermented cabbage broth with real freeze-dried kimchi flakes in the sachet.",
+        "long": "Real freeze dried kimchi flakes go into the vegetable sachet, so the broth turns properly sour as they rehydrate rather than just tasting of chilli. The tang cuts the oil in a way plain spicy packs do not, which is why this is the one people order when they want something bright instead of heavy. Moderate heat, high appetite.",
+        "serve": "Cook in 550ml of water for 4 to 5 minutes. Extra kimchi from the jar and a slice of cheese on top is the standard Korean upgrade.",
+        "ingredients": "Enriched wheat flour, potato starch, palm oil, modified potato starch, dried kimchi flakes (napa cabbage, red chilli pepper, garlic, dextrin, salt, ginger), anchovy extract, beef bone extract, garlic, ginger, spring onion, black pepper, salt.",
+        "allergens": "Contains wheat, soy, fish (anchovy) and beef. May contain milk, egg and shellfish.",
+        "nutrition": {
+          "basis": "Per 120g pack",
+          "energy": "520 kcal",
+          "fat": "18g",
+          "satFat": "9g",
+          "carbs": "79g",
+          "fibre": "3g",
+          "sugars": "3g",
+          "protein": "11g",
+          "sodium": "2070mg"
+        },
+        "variants": [
+          {
+            "sku": "RAM-KIMCHI-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-KIMCHI-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-KIMCHI-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Nongshim Kimchi Ramyun",
+        "url": "https://kfoods.lk/products/kimchi.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/placeholder-noodles.svg",
+          "thumb": "https://kfoods.lk/images/products/placeholder-noodles.svg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "cham-pong",
+        "name": "Champong Seafood Ramyun",
+        "ko": "짬뽕",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "130g",
+        "heat": 4,
+        "cook": "4-5 mins",
+        "badge": "Seafood Favourite",
+        "image": "images/products/placeholder-noodles.svg",
+        "short": "Seafood noodle soup in the Korean-Chinese style, with squid and vegetable flakes in a peppery red broth.",
+        "long": "Champong is the Korean-Chinese seafood noodle soup you get from takeaway shops, and this is Nongshim's version of it. The broth is smoky and peppery rather than sweet, built from cuttlefish, mussel, scallop, shrimp and crab with a red chilli oil finish. Cabbage, bok choy and seaweed flakes rehydrate into something closer to a restaurant bowl than most instant seafood packs manage.",
+        "serve": "Cook in 550ml of water for 4 to 5 minutes. A handful of prawns or mussels dropped in at the start turns it into a proper meal.",
+        "ingredients": "Enriched wheat flour, potato starch, palm oil, modified potato starch, dried vegetable flakes (cabbage, bok choy, red chilli, mushroom, seaweed), seasoned oil (corn oil, canola oil, chilli pepper, garlic), cuttlefish extract, mussel extract, shrimp extract, crab extract, beef bone extract, salt, maltodextrin.",
+        "allergens": "Contains wheat, soy, sesame, crab and shrimp. May contain milk, egg, fish, tree nuts and peanuts.",
+        "nutrition": {
+          "basis": "Per 130g pack",
+          "energy": "560 kcal",
+          "fat": "19g",
+          "satFat": "9g",
+          "carbs": "89g",
+          "fibre": "3g",
+          "sugars": "4g",
+          "protein": "9g",
+          "sodium": "1810mg"
+        },
+        "variants": [
+          {
+            "sku": "RAM-CHAMPONG-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-CHAMPONG-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-CHAMPONG-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Nongshim Champong Seafood Ramyun",
+        "url": "https://kfoods.lk/products/cham-pong.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/placeholder-noodles.svg",
+          "thumb": "https://kfoods.lk/images/products/placeholder-noodles.svg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "chapagetti",
+        "name": "Chapagetti",
+        "ko": "짜파게티",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "140g",
+        "heat": 0,
+        "cook": "5 mins",
+        "badge": "Kid Friendly",
+        "image": "images/products/placeholder-noodles.svg",
+        "short": "Korea's take on jjajangmyeon, built on a roasted black bean sauce. Savoury, mildly sweet, no chilli at all.",
+        "long": "Korea's answer to jjajangmyeon, and the number one non-soup instant noodle in the country. A roasted black bean sauce coats thick noodles with dried onion, cabbage and soy protein pieces, finished with a sachet of olive oil that lifts the whole thing. Completely free of chilli, which makes it the safe order for children and anyone who has been defeated by fire noodles.",
+        "serve": "Boil for 5 minutes, drain to about eight spoons of water, then stir the powder and olive oil sachets through off the heat. Add Neoguri for the Chapaguri everyone asks about.",
+        "ingredients": "Wheat flour, palm oil, potato starch, roasted black bean paste powder (chunjang), extra virgin olive oil, dried onion, dried cabbage, textured soy protein, caramel colour, glucose, sugar, salt.",
+        "allergens": "Contains wheat and soy. May contain milk, egg, fish and beef.",
+        "nutrition": {
+          "basis": "Per 140g pack",
+          "energy": "600 kcal",
+          "fat": "20g",
+          "satFat": "9g",
+          "carbs": "94g",
+          "fibre": "3g",
+          "sugars": "6g",
+          "protein": "11g",
+          "sodium": "1180mg"
+        },
+        "variants": [
+          {
+            "sku": "RAM-CHAPAGETTI-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-CHAPAGETTI-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-CHAPAGETTI-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Nongshim Chapagetti",
+        "url": "https://kfoods.lk/products/chapagetti.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/placeholder-noodles.svg",
+          "thumb": "https://kfoods.lk/images/products/placeholder-noodles.svg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "ansung",
+        "name": "Ansungtangmyun",
+        "ko": "안성탕면",
+        "brand": "Nongshim",
+        "category": "Instant Noodles",
+        "pack": "125g",
+        "heat": 2,
+        "cook": "4-5 mins",
+        "badge": "Heritage Classic",
+        "image": "images/products/placeholder-noodles.svg",
+        "short": "A soybean paste broth that is thicker and earthier than the usual chilli-forward ramyun. Mild and hearty.",
+        "long": "Named after the town of Anseong and on shelves since 1983, Ansungtangmyun is the doenjang pack. Fermented soybean paste and beef stock give it an earthy, almost miso-like depth that is thicker and rounder than the chilli-forward ramyun most people start with. There is warmth rather than heat, which makes it the one to reach for when you want comfort instead of a challenge.",
+        "serve": "Cook in 550ml of water for 4 to 5 minutes. Tofu cubes and courgette suit this broth better than egg.",
+        "ingredients": "Wheat flour, potato starch, palm oil, rice flour, wheat gluten, soybean paste powder (doenjang), beef extract powder, dried seaweed, dried cabbage, garlic, onion, red pepper, black pepper, mushroom, salt.",
+        "allergens": "Contains wheat, soy and beef. May contain milk, egg and fish.",
+        "nutrition": {
+          "basis": "Per 125g pack",
+          "energy": "540 kcal",
+          "fat": "20g",
+          "satFat": "9g",
+          "carbs": "81g",
+          "fibre": "3g",
+          "sugars": "4g",
+          "protein": "10g",
+          "sodium": "1720mg"
+        },
+        "variants": [
+          {
+            "sku": "RAM-ANSUNG-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-ANSUNG-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-ANSUNG-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Nongshim Ansungtangmyun",
+        "url": "https://kfoods.lk/products/ansung.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/placeholder-noodles.svg",
+          "thumb": "https://kfoods.lk/images/products/placeholder-noodles.svg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "hotdak-original",
+        "name": "Hot Dak Stir-Fry Ramen Original",
+        "ko": "핫닭 볶음면",
+        "brand": "Migawon",
+        "category": "Instant Noodles",
+        "pack": "140g",
+        "heat": 5,
+        "cook": "4-5 mins",
+        "badge": "Fire Challenge",
+        "image": "images/products/hot-dak-stir-fry-ramen-original-v2.jpeg",
+        "short": "The original fire chicken challenge, sweet up front and genuinely punishing after. Keep something cold within arm's reach.",
+        "long": "Migawon's fire chicken stir fry noodle, and the pack that gets bought for the challenge as much as the flavour. Sweet and garlicky for the first mouthful, then the capsaicin builds and keeps building for a good while after the bowl is empty. Toasted sesame and seaweed flakes come in a separate sachet to scatter at the end.",
+        "serve": "Boil for 5 minutes, drain to roughly eight spoons of water, stir the sauce through and top with the sesame and seaweed sachet. Milk on standby.",
+        "ingredients": "Wheat flour, palm oil, potato starch, hot chicken sauce (red chilli powder, capsaicin extract, soy sauce, sugar, garlic, onion), chicken extract, roasted sesame seeds, dried seaweed flakes, black pepper, salt.",
+        "allergens": "Contains wheat, soy, sesame and chicken. May contain milk, egg and fish.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "RAM-HOTDAK-ORIGINAL-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-HOTDAK-ORIGINAL-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-HOTDAK-ORIGINAL-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Migawon Hot Dak Stir-Fry Ramen Original",
+        "url": "https://kfoods.lk/products/hotdak-original.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/hot-dak-stir-fry-ramen-original-v2.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/hot-dak-stir-fry-ramen-original-v2.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "hotdak-carbo",
+        "name": "Hot Dak Carbo Stir-Fry Ramen",
+        "ko": "까르보 핫닭 볶음면",
+        "brand": "Migawon",
+        "category": "Instant Noodles",
+        "pack": "140g",
+        "heat": 3,
+        "cook": "4-5 mins",
+        "badge": "Creamy Heat",
+        "image": "images/products/migawon-carbo-hotdak-stir-fry-ramen-v2.jpeg",
+        "short": "Fire chicken heat wrapped in a creamy carbonara sauce that rounds off the sharp edges.",
+        "long": "Fire chicken heat wrapped in a creamy carbonara sauce that takes the sharp edges off without removing the burn. Still clearly spicy, just rounder and easier to finish than the original. The pack most people reach for first if they have heard about fire noodles but are not ready to commit.",
+        "serve": "Drain almost dry, stir the carbonara sauce through, then add a splash of milk if you want it milder still.",
+        "ingredients": "Wheat flour, palm oil, potato starch, cream powder, cheese powder, milk powder, hot chicken sauce (red chilli powder, capsaicin extract, soy sauce, sugar, garlic), roasted sesame seeds, dried parsley, black pepper, salt.",
+        "allergens": "Contains wheat, soy, milk, sesame and chicken. May contain egg and fish.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "RAM-HOTDAK-CARBO-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-HOTDAK-CARBO-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-HOTDAK-CARBO-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Migawon Hot Dak Carbo Stir-Fry Ramen",
+        "url": "https://kfoods.lk/products/hotdak-carbo.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/migawon-carbo-hotdak-stir-fry-ramen-v2.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/migawon-carbo-hotdak-stir-fry-ramen-v2.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "hotdak-cheese",
+        "name": "Hot Dak Cheese Stir-Fry Ramen",
+        "ko": "치즈 핫닭 볶음면",
+        "brand": "Migawon",
+        "category": "Instant Noodles",
+        "pack": "150g",
+        "heat": 4,
+        "cook": "4-5 mins",
+        "badge": "Cheesy Fire",
+        "image": "images/products/placeholder-noodles.svg",
+        "short": "Fire chicken noodles with a cheese layer stirred through at the end. A good entry point to the fire packs.",
+        "long": "Fire chicken noodles with a cheese layer stirred through at the end. Less taming than the carbo version and more of a savoury counterweight to the chilli, so the heat still arrives but with something to push against. A sensible entry point if the original pack has already beaten you once.",
+        "serve": "Stir the sauce through first, then the cheese powder, so it melts into the noodles instead of clumping.",
+        "ingredients": "Wheat flour, palm oil, potato starch, cheddar cheese powder, whey powder, hot chicken sauce (red chilli powder, capsaicin extract, soy sauce, sugar, garlic, onion), roasted sesame seeds, dried seaweed flakes, black pepper, salt.",
+        "allergens": "Contains wheat, soy, milk, sesame and chicken. May contain egg and fish.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "RAM-HOTDAK-CHEESE-1",
+            "label": "Single Pack",
+            "price": 750,
+            "units": 1,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-HOTDAK-CHEESE-5",
+            "label": "5 Pack",
+            "price": 3750,
+            "units": 5,
+            "unitPrice": 750
+          },
+          {
+            "sku": "RAM-HOTDAK-CHEESE-20",
+            "label": "Carton (20)",
+            "price": 15000,
+            "units": 20,
+            "unitPrice": 750
+          }
+        ],
+        "fullName": "Migawon Hot Dak Cheese Stir-Fry Ramen",
+        "url": "https://kfoods.lk/products/hotdak-cheese.html",
+        "priceFrom": 750,
+        "priceTo": 15000,
+        "images": {
+          "main": "https://kfoods.lk/images/products/placeholder-noodles.svg",
+          "thumb": "https://kfoods.lk/images/products/placeholder-noodles.svg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "shin-ramyun-cup",
+        "name": "Shin Ramyun Cup",
+        "ko": "신라면 컵",
+        "brand": "Nongshim",
+        "category": "Cup Noodles",
+        "pack": "68g",
+        "heat": 4,
+        "cook": "3 mins",
+        "badge": "Ready in 3 mins",
+        "image": "images/shin-cup.webp",
+        "short": "Shin's signature spicy beef broth portioned into a single-serve cup. Just add boiling water.",
+        "long": "The same spicy beef and mushroom broth as the original Shin pack, portioned into a single serve cup that needs nothing but a kettle. Thinner noodles than the bag version so they soften in three minutes flat, which makes this the default choice for hostel rooms, office desks and late shifts.",
+        "serve": "Fill to the inside line with boiling water, close the lid and wait 3 minutes. No pot, no draining.",
+        "ingredients": "Wheat flour, palm oil, potato starch, salt, hydrolysed soy protein, red chilli pepper, garlic, shiitake mushroom extract, beef bone extract, dried spring onion, dried carrot, black pepper.",
+        "allergens": "Contains wheat, soy and beef. May contain milk, egg and fish.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "CUP-SHIN-1",
+            "label": "Single Cup",
+            "price": 560,
+            "units": 1,
+            "unitPrice": 560
+          },
+          {
+            "sku": "CUP-SHIN-5",
+            "label": "5 Pack",
+            "price": 2800,
+            "units": 5,
+            "unitPrice": 560
+          },
+          {
+            "sku": "CUP-SHIN-20",
+            "label": "Carton (20)",
+            "price": 11200,
+            "units": 20,
+            "unitPrice": 560
+          }
+        ],
+        "fullName": "Nongshim Shin Ramyun Cup",
+        "url": "https://kfoods.lk/products/shin-ramyun-cup.html",
+        "priceFrom": 560,
+        "priceTo": 11200,
+        "images": {
+          "main": "https://kfoods.lk/images/shin-cup.webp",
+          "thumb": "https://kfoods.lk/images/shin-cup.webp",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "toomba-cup",
+        "name": "Shin Ramyun Toomba Cup",
+        "ko": "신라면 툼바 컵",
+        "brand": "Nongshim",
+        "category": "Cup Noodles",
+        "pack": "80g",
+        "heat": 3,
+        "cook": "3 mins",
+        "badge": "Ready in 3 mins",
+        "image": "images/products/placeholder-cup.svg",
+        "short": "The creamy carbonara ramyun in a desk-friendly cup that needs nothing but hot water.",
+        "long": "The creamy Toomba sauce in a desk friendly cup that needs nothing but hot water and three minutes. Drain through the lid, stir the sachet through and you have the same rich cheese and chilli coating as the bag version at roughly half the portion.",
+        "serve": "Fill to the line, wait 3 minutes, drain through the lid spout, then stir the sauce sachet through.",
+        "ingredients": "Wheat flour, palm oil, potato starch, cream powder, cheddar cheese powder, milk powder, garlic, red chilli powder, black pepper, dried parsley, sugar, salt.",
+        "allergens": "Contains wheat, soy and milk. May contain egg, fish and beef.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "CUP-TOOMBA-1",
+            "label": "Single Cup",
+            "price": 795,
+            "units": 1,
+            "unitPrice": 795
+          },
+          {
+            "sku": "CUP-TOOMBA-5",
+            "label": "5 Pack",
+            "price": 3975,
+            "units": 5,
+            "unitPrice": 795
+          },
+          {
+            "sku": "CUP-TOOMBA-20",
+            "label": "Carton (20)",
+            "price": 15900,
+            "units": 20,
+            "unitPrice": 795
+          }
+        ],
+        "fullName": "Nongshim Shin Ramyun Toomba Cup",
+        "url": "https://kfoods.lk/products/toomba-cup.html",
+        "priceFrom": 795,
+        "priceTo": 15900,
+        "images": {
+          "main": "https://kfoods.lk/images/products/placeholder-cup.svg",
+          "thumb": "https://kfoods.lk/images/products/placeholder-cup.svg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "banana-milk",
+        "name": "Binggrae Banana Flavoured Milk",
+        "ko": "바나나맛우유",
+        "brand": "Binggrae",
+        "category": "Beverages",
+        "pack": "200ml",
+        "heat": null,
+        "cook": null,
+        "badge": "Korean Icon",
+        "image": "images/products/binggrae-banana-flavoured-milk.jpeg",
+        "short": "The Korean convenience-store classic, mellow and creamy with a gentle banana sweetness.",
+        "long": "The Korean convenience store classic, in the 200ml carton that comes with a straw taped to the front and carries the same fat pot-shaped bottle on its label — a design that has barely changed since 1974. Mellow and creamy with a gentle banana sweetness rather than a candy one, and enough real milk in it to actually be filling. The single most recognisable drink in Korea.",
+        "serve": "Best served cold, straight from the fridge.",
+        "ingredients": "Milk 60%, water, sugar, skim milk powder 1.9%, whey powder (milk), banana juice concentrate 0.32%, artificial flavours, emulsifier (mono- and di-glycerides of fatty acids), stabilizers (carrageenan, guar gum), colours (tartrazine, sunset yellow FCF).",
+        "allergens": "Contains milk.",
+        "nutrition": {
+          "basis": "Per 200ml carton",
+          "energy": "160 kcal",
+          "fat": "5.5g",
+          "satFat": "3.3g",
+          "carbs": "22g",
+          "fibre": "0g",
+          "sugars": "21g",
+          "protein": "5g",
+          "sodium": "85mg"
+        },
+        "variants": [
+          {
+            "sku": "BEV-BANANA-MILK-1",
+            "label": "Single Carton",
+            "price": 590,
+            "units": 1,
+            "unitPrice": 590
+          },
+          {
+            "sku": "BEV-BANANA-MILK-5",
+            "label": "5 Pack",
+            "price": 2950,
+            "units": 5,
+            "unitPrice": 590
+          },
+          {
+            "sku": "BEV-BANANA-MILK-20",
+            "label": "Carton (20)",
+            "price": 11800,
+            "units": 20,
+            "unitPrice": 590
+          }
+        ],
+        "fullName": "Binggrae Banana Flavoured Milk",
+        "url": "https://kfoods.lk/products/banana-milk.html",
+        "priceFrom": 590,
+        "priceTo": 11800,
+        "images": {
+          "main": "https://kfoods.lk/images/products/binggrae-banana-flavoured-milk.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/binggrae-banana-flavoured-milk.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "melon-milk",
+        "name": "Binggrae Melon Flavoured Milk",
+        "ko": "메로나 메론맛우유",
+        "brand": "Binggrae",
+        "category": "Beverages",
+        "pack": "200ml",
+        "heat": null,
+        "cook": null,
+        "badge": null,
+        "image": "images/products/binggrae-melon-flavoured-milk.jpeg",
+        "short": "Korean muskmelon blended into milk for a fragrant, dessert-like drink.",
+        "long": "Korean muskmelon blended into milk for a fragrant, dessert-like drink that lands somewhere between honeydew and the Melona ice bar it shares a name with. Sweeter and more perfumed than the banana version, and the one people tend to buy after they have already worked through that one.",
+        "serve": "Serve very cold. Tastes closest to the Melona ice bar that way.",
+        "ingredients": "Milk 60%, water, sugar, skim milk powder 1.9%, whey powder (milk), melon juice concentrate 0.1%, artificial flavours, emulsifier (mono- and di-glycerides of fatty acids), stabilizers (carrageenan, guar gum), colours (tartrazine, brilliant blue FCF).",
+        "allergens": "Contains milk.",
+        "nutrition": {
+          "basis": "Per 200ml carton",
+          "energy": "160 kcal",
+          "fat": "6g",
+          "satFat": "3.5g",
+          "carbs": "22g",
+          "fibre": "0g",
+          "sugars": "21g",
+          "protein": "5g",
+          "sodium": "85mg"
+        },
+        "variants": [
+          {
+            "sku": "BEV-MELON-MILK-1",
+            "label": "Single Carton",
+            "price": 590,
+            "units": 1,
+            "unitPrice": 590
+          },
+          {
+            "sku": "BEV-MELON-MILK-5",
+            "label": "5 Pack",
+            "price": 2950,
+            "units": 5,
+            "unitPrice": 590
+          },
+          {
+            "sku": "BEV-MELON-MILK-20",
+            "label": "Carton (20)",
+            "price": 11800,
+            "units": 20,
+            "unitPrice": 590
+          }
+        ],
+        "fullName": "Binggrae Melon Flavoured Milk",
+        "url": "https://kfoods.lk/products/melon-milk.html",
+        "priceFrom": 590,
+        "priceTo": 11800,
+        "images": {
+          "main": "https://kfoods.lk/images/products/binggrae-melon-flavoured-milk.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/binggrae-melon-flavoured-milk.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "strawberry-milk",
+        "name": "Binggrae Strawberry Flavoured Milk",
+        "ko": "딸기맛우유",
+        "brand": "Binggrae",
+        "category": "Beverages",
+        "pack": "200ml",
+        "heat": null,
+        "cook": null,
+        "badge": null,
+        "image": "images/products/binggrae-strawberry-flavoured-milk.jpeg",
+        "short": "Smooth milk drink with a soft, jammy strawberry flavour. A reliable pick for children.",
+        "long": "Smooth milk with a soft, jammy strawberry flavour that stays on the gentle side rather than turning sharp. The most reliable pick of the three for children, and the one adults who avoid the banana carton usually settle on. Same 200ml carton with a straw taped to the front.",
+        "serve": "Serve chilled.",
+        "ingredients": "Milk 60%, water, sugar, skim milk powder 1.9%, whey powder (milk), strawberry juice concentrate 0.11%, artificial flavours, emulsifier (mono- and di-glycerides of fatty acids), stabilizers (carrageenan, guar gum), colour (allura red AC).",
+        "allergens": "Contains milk.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "BEV-STRAWBERRY-MILK-1",
+            "label": "Single Carton",
+            "price": 590,
+            "units": 1,
+            "unitPrice": 590
+          },
+          {
+            "sku": "BEV-STRAWBERRY-MILK-5",
+            "label": "5 Pack",
+            "price": 2950,
+            "units": 5,
+            "unitPrice": 590
+          },
+          {
+            "sku": "BEV-STRAWBERRY-MILK-20",
+            "label": "Carton (20)",
+            "price": 11800,
+            "units": 20,
+            "unitPrice": 590
+          }
+        ],
+        "fullName": "Binggrae Strawberry Flavoured Milk",
+        "url": "https://kfoods.lk/products/strawberry-milk.html",
+        "priceFrom": 590,
+        "priceTo": 11800,
+        "images": {
+          "main": "https://kfoods.lk/images/products/binggrae-strawberry-flavoured-milk.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/binggrae-strawberry-flavoured-milk.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "okf-aloe-drink",
+        "name": "OKF Aloe Vera King",
+        "ko": null,
+        "brand": "OKF",
+        "category": "Beverages",
+        "pack": "500ml",
+        "heat": null,
+        "cook": null,
+        "badge": "Shelf Favourite",
+        "image": "images/products/okf-aloe-vera-king.jpeg",
+        "short": "Lightly sweetened aloe vera juice with soft chunks of pulp suspended throughout.",
+        "long": "Lightly sweetened aloe vera juice with soft chunks of real aloe gel suspended through it. Mild and cooling rather than sugary, and the pulp gives it something to chew on, which is half the appeal. The bottle most people in Sri Lanka already recognise from supermarket shelves.",
+        "serve": "Shake gently before opening so the pulp spreads through the bottle.",
+        "ingredients": "Water, aloe vera juice (22%), fructose, aloe vera gel (8%), calcium lactate, gellan gum, citric acid, sodium citrate, natural grape flavour, sugar.",
+        "allergens": "No declared allergens.",
+        "nutrition": {
+          "basis": "Per 500ml bottle",
+          "energy": "200 kcal",
+          "fat": "0g",
+          "carbs": "50g",
+          "sugars": "48g",
+          "protein": "0g",
+          "sodium": "25mg"
+        },
+        "variants": [
+          {
+            "sku": "BEV-OKF-ALOE-1",
+            "label": "Single Bottle",
+            "price": 690,
+            "units": 1,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-OKF-ALOE-5",
+            "label": "5 Pack",
+            "price": 3450,
+            "units": 5,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-OKF-ALOE-20",
+            "label": "Carton (20)",
+            "price": 13800,
+            "units": 20,
+            "unitPrice": 690
+          }
+        ],
+        "fullName": "OKF Aloe Vera King",
+        "url": "https://kfoods.lk/products/okf-aloe-drink.html",
+        "priceFrom": 690,
+        "priceTo": 13800,
+        "images": {
+          "main": "https://kfoods.lk/images/products/okf-aloe-vera-king.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/okf-aloe-vera-king.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "olatte-peach",
+        "name": "OKF Olatte Peach",
+        "ko": null,
+        "brand": "OKF",
+        "category": "Beverages",
+        "pack": "240ml",
+        "heat": null,
+        "cook": null,
+        "badge": null,
+        "image": "images/products/okf-olatte-peach.jpeg",
+        "short": "A peach latte that layers stone fruit over a milky base without turning heavy.",
+        "long": "A peach latte that layers stone fruit over a milky base without turning heavy. Sweet but not cloying, and unusual enough to be worth trying if you have only ever had peach as an iced tea. Sold in the slim 240ml can.",
+        "serve": "Good chilled, and equally good warmed in cold weather.",
+        "ingredients": "Water, sugar, skimmed milk powder, peach juice concentrate, vegetable cream, natural flavours, emulsifier, stabiliser.",
+        "allergens": "Contains milk.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "BEV-OLATTE-PEACH-1",
+            "label": "Single Can",
+            "price": 690,
+            "units": 1,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-OLATTE-PEACH-5",
+            "label": "5 Pack",
+            "price": 3450,
+            "units": 5,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-OLATTE-PEACH-20",
+            "label": "Carton (20)",
+            "price": 13800,
+            "units": 20,
+            "unitPrice": 690
+          }
+        ],
+        "fullName": "OKF Olatte Peach",
+        "url": "https://kfoods.lk/products/olatte-peach.html",
+        "priceFrom": 690,
+        "priceTo": 13800,
+        "images": {
+          "main": "https://kfoods.lk/images/products/okf-olatte-peach.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/okf-olatte-peach.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "olatte-strawberry",
+        "name": "OKF Olatte Strawberry",
+        "ko": null,
+        "brand": "OKF",
+        "category": "Beverages",
+        "pack": "240ml",
+        "heat": null,
+        "cook": null,
+        "badge": "New",
+        "image": "images/products/okf-olatte-strawberry.jpeg",
+        "short": "A strawberry latte with the fruit up front and a soft milky finish behind it.",
+        "long": "The strawberry version of the Olatte can, and the easiest one to hand to someone who has never tried a Korean milk drink. Strawberry sits up front, sweet and jammy rather than sharp, with the milky base filling in underneath so it drinks smooth instead of thin. Sold in the same slim 240ml can as the peach.",
+        "serve": "Best cold, straight from the chiller. Shake the can before opening.",
+        "ingredients": "Water, sugar, skimmed milk powder, strawberry juice concentrate, vegetable cream, natural flavours, emulsifier, stabiliser, colour.",
+        "allergens": "Contains milk.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "BEV-OLATTE-STRAWBERRY-1",
+            "label": "Single Can",
+            "price": 690,
+            "units": 1,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-OLATTE-STRAWBERRY-5",
+            "label": "5 Pack",
+            "price": 3450,
+            "units": 5,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-OLATTE-STRAWBERRY-20",
+            "label": "Carton (20)",
+            "price": 13800,
+            "units": 20,
+            "unitPrice": 690
+          }
+        ],
+        "fullName": "OKF Olatte Strawberry",
+        "url": "https://kfoods.lk/products/olatte-strawberry.html",
+        "priceFrom": 690,
+        "priceTo": 13800,
+        "images": {
+          "main": "https://kfoods.lk/images/products/okf-olatte-strawberry.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/okf-olatte-strawberry.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "olatte-apple",
+        "name": "OKF Olatte Apple",
+        "ko": null,
+        "brand": "OKF",
+        "category": "Beverages",
+        "pack": "240ml",
+        "heat": null,
+        "cook": null,
+        "badge": "New",
+        "image": "images/products/okf-olatte-apple.jpeg",
+        "short": "Orchard apple over a milky base, tart enough at the edges to keep it from turning flat.",
+        "long": "The apple Olatte keeps a bit of orchard tartness at the edges, which is what stops it going flat the way sweet apple drinks usually do. The milky base rounds it off without burying the fruit, and it lands somewhere between an apple juice and a soft dessert drink. Same slim 240ml can as the rest of the Olatte range.",
+        "serve": "Best cold, straight from the chiller. Shake the can before opening.",
+        "ingredients": "Water, sugar, skimmed milk powder, apple juice concentrate, vegetable cream, natural flavours, emulsifier, stabiliser.",
+        "allergens": "Contains milk.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "BEV-OLATTE-APPLE-1",
+            "label": "Single Can",
+            "price": 690,
+            "units": 1,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-OLATTE-APPLE-5",
+            "label": "5 Pack",
+            "price": 3450,
+            "units": 5,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-OLATTE-APPLE-20",
+            "label": "Carton (20)",
+            "price": 13800,
+            "units": 20,
+            "unitPrice": 690
+          }
+        ],
+        "fullName": "OKF Olatte Apple",
+        "url": "https://kfoods.lk/products/olatte-apple.html",
+        "priceFrom": 690,
+        "priceTo": 13800,
+        "images": {
+          "main": "https://kfoods.lk/images/products/okf-olatte-apple.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/okf-olatte-apple.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "olatte-pear-cream-soda",
+        "name": "OKF Olatte Pear Cream Soda",
+        "ko": null,
+        "brand": "OKF",
+        "category": "Beverages",
+        "pack": "240ml",
+        "heat": null,
+        "cook": null,
+        "badge": "New",
+        "image": "images/products/okf-olatte-pear-cream-soda.jpeg",
+        "short": "Korean pear over a creamy soda base, fizzy and mellow at the same time.",
+        "long": "A cream soda built on Korean pear rather than vanilla, which keeps it lighter than most drinks carrying the cream soda name. The pear brings that clean, slightly floral sweetness Koreans use in everything from marinades to hangover cures, and the carbonation stops the creaminess from sitting heavy. Comes in the 240ml can.",
+        "serve": "Serve very cold. Good alongside the stir-fry packs, where the sweetness cuts the chilli.",
+        "ingredients": "Carbonated water, sugar, pear juice concentrate, skimmed milk powder, natural flavours, citric acid, stabiliser.",
+        "allergens": "Contains milk.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "BEV-OLATTE-PEAR-1",
+            "label": "Single Can",
+            "price": 690,
+            "units": 1,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-OLATTE-PEAR-5",
+            "label": "5 Pack",
+            "price": 3450,
+            "units": 5,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-OLATTE-PEAR-20",
+            "label": "Carton (20)",
+            "price": 13800,
+            "units": 20,
+            "unitPrice": 690
+          }
+        ],
+        "fullName": "OKF Olatte Pear Cream Soda",
+        "url": "https://kfoods.lk/products/olatte-pear-cream-soda.html",
+        "priceFrom": 690,
+        "priceTo": 13800,
+        "images": {
+          "main": "https://kfoods.lk/images/products/okf-olatte-pear-cream-soda.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/okf-olatte-pear-cream-soda.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "oncup-blue-lemon",
+        "name": "OKF Oncup Blue Lemon",
+        "ko": null,
+        "brand": "OKF",
+        "category": "Beverages",
+        "pack": "240ml",
+        "heat": null,
+        "cook": null,
+        "badge": null,
+        "image": "images/products/placeholder-drink.svg",
+        "short": "A bright blue lemon soda with a sharp citrus bite and a sweet finish.",
+        "long": "A bright blue lemon soda with a sharp citrus bite and a sweet finish. As much about the colour as the flavour, which is exactly why it sells, and the sharpness holds up better than most blue drinks once the ice starts melting.",
+        "serve": "Best served very cold, straight from the chiller.",
+        "ingredients": "Carbonated water, sugar, lemon juice concentrate, citric acid, natural flavours, vitamin C, colour (brilliant blue).",
+        "allergens": "No declared allergens.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "BEV-ONCUP-BLUELEMON-1",
+            "label": "Single Cup",
+            "price": 760,
+            "units": 1,
+            "unitPrice": 760
+          },
+          {
+            "sku": "BEV-ONCUP-BLUELEMON-5",
+            "label": "5 Pack",
+            "price": 3800,
+            "units": 5,
+            "unitPrice": 760
+          },
+          {
+            "sku": "BEV-ONCUP-BLUELEMON-20",
+            "label": "Carton (20)",
+            "price": 15200,
+            "units": 20,
+            "unitPrice": 760
+          }
+        ],
+        "fullName": "OKF Oncup Blue Lemon",
+        "url": "https://kfoods.lk/products/oncup-blue-lemon.html",
+        "priceFrom": 760,
+        "priceTo": 15200,
+        "images": {
+          "main": "https://kfoods.lk/images/products/placeholder-drink.svg",
+          "thumb": "https://kfoods.lk/images/products/placeholder-drink.svg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "oncup-blue-berry",
+        "name": "OKF Oncup Blueberry",
+        "ko": null,
+        "brand": "OKF",
+        "category": "Beverages",
+        "pack": "240ml",
+        "heat": null,
+        "cook": null,
+        "badge": null,
+        "image": "images/products/placeholder-drink.svg",
+        "short": "Deep purple blueberry drink with a tart edge that stops it from being cloying.",
+        "long": "Deep purple blueberry drink with a tart edge that stops it turning cloying. The acidity makes it one of the better things to have alongside a fire noodle pack, where a sweeter drink would just add to the load.",
+        "serve": "Serve chilled. Pairs well with the spicier stir-fry packs.",
+        "ingredients": "Water, sugar, blueberry juice concentrate, citric acid, natural flavours, vitamin C, colour.",
+        "allergens": "No declared allergens.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "BEV-ONCUP-BLUEBERRY-1",
+            "label": "Single Cup",
+            "price": 760,
+            "units": 1,
+            "unitPrice": 760
+          },
+          {
+            "sku": "BEV-ONCUP-BLUEBERRY-5",
+            "label": "5 Pack",
+            "price": 3800,
+            "units": 5,
+            "unitPrice": 760
+          },
+          {
+            "sku": "BEV-ONCUP-BLUEBERRY-20",
+            "label": "Carton (20)",
+            "price": 15200,
+            "units": 20,
+            "unitPrice": 760
+          }
+        ],
+        "fullName": "OKF Oncup Blueberry",
+        "url": "https://kfoods.lk/products/oncup-blue-berry.html",
+        "priceFrom": 760,
+        "priceTo": 15200,
+        "images": {
+          "main": "https://kfoods.lk/images/products/placeholder-drink.svg",
+          "thumb": "https://kfoods.lk/images/products/placeholder-drink.svg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "oncup-green-grape",
+        "name": "OKF Oncup Green Grape",
+        "ko": null,
+        "brand": "OKF",
+        "category": "Beverages",
+        "pack": "240ml",
+        "heat": null,
+        "cook": null,
+        "badge": null,
+        "image": "images/products/placeholder-drink.svg",
+        "short": "Made with green grape rather than the usual dark varieties, so it drinks light and floral.",
+        "long": "Made with green grape rather than the usual dark varieties, so it drinks light and floral instead of heavy and jammy. One of the more grown up flavours in the range and a steady repeat buy.",
+        "serve": "Serve chilled.",
+        "ingredients": "Water, sugar, green grape juice concentrate, citric acid, natural flavours, vitamin C.",
+        "allergens": "No declared allergens.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "BEV-ONCUP-GREENGRAPE-1",
+            "label": "Single Cup",
+            "price": 760,
+            "units": 1,
+            "unitPrice": 760
+          },
+          {
+            "sku": "BEV-ONCUP-GREENGRAPE-5",
+            "label": "5 Pack",
+            "price": 3800,
+            "units": 5,
+            "unitPrice": 760
+          },
+          {
+            "sku": "BEV-ONCUP-GREENGRAPE-20",
+            "label": "Carton (20)",
+            "price": 15200,
+            "units": 20,
+            "unitPrice": 760
+          }
+        ],
+        "fullName": "OKF Oncup Green Grape",
+        "url": "https://kfoods.lk/products/oncup-green-grape.html",
+        "priceFrom": 760,
+        "priceTo": 15200,
+        "images": {
+          "main": "https://kfoods.lk/images/products/placeholder-drink.svg",
+          "thumb": "https://kfoods.lk/images/products/placeholder-drink.svg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "oncup-peach-iced-tea",
+        "name": "OKF Oncup Peach Iced Tea",
+        "ko": null,
+        "brand": "OKF",
+        "category": "Beverages",
+        "pack": "240ml",
+        "heat": null,
+        "cook": null,
+        "badge": null,
+        "image": "images/products/placeholder-drink.svg",
+        "short": "Brewed black tea rounded out with ripe peach, light on sugar for an iced tea.",
+        "long": "Brewed black tea rounded out with ripe peach and kept light on sugar for an iced tea. Refreshing without the syrupy finish most bottled versions have, which makes it the easiest of the Oncup range to drink a whole one of.",
+        "serve": "Serve over ice.",
+        "ingredients": "Water, sugar, black tea extract, peach juice concentrate, citric acid, natural flavours, vitamin C.",
+        "allergens": "No declared allergens.",
+        "nutrition": null,
+        "variants": [
+          {
+            "sku": "BEV-ONCUP-PEACHTEA-1",
+            "label": "Single Cup",
+            "price": 760,
+            "units": 1,
+            "unitPrice": 760
+          },
+          {
+            "sku": "BEV-ONCUP-PEACHTEA-5",
+            "label": "5 Pack",
+            "price": 3800,
+            "units": 5,
+            "unitPrice": 760
+          },
+          {
+            "sku": "BEV-ONCUP-PEACHTEA-20",
+            "label": "Carton (20)",
+            "price": 15200,
+            "units": 20,
+            "unitPrice": 760
+          }
+        ],
+        "fullName": "OKF Oncup Peach Iced Tea",
+        "url": "https://kfoods.lk/products/oncup-peach-iced-tea.html",
+        "priceFrom": 760,
+        "priceTo": 15200,
+        "images": {
+          "main": "https://kfoods.lk/images/products/placeholder-drink.svg",
+          "thumb": "https://kfoods.lk/images/products/placeholder-drink.svg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "oncup-watermelon",
+        "name": "OKF Oncup Watermelon",
+        "ko": null,
+        "brand": "OKF",
+        "category": "Beverages",
+        "pack": "230ml",
+        "heat": null,
+        "cook": null,
+        "badge": null,
+        "image": "images/products/okf-oncup-watermelon.jpeg",
+        "short": "Watermelon juice drink that tastes closer to the fruit than to candy. A hot-afternoon favourite.",
+        "long": "Watermelon juice drink that tastes closer to the fruit than to candy, which is rarer than it sounds in this category. A hot afternoon favourite and the fastest mover of the Oncup flavours among younger customers.",
+        "serve": "Serve very cold.",
+        "ingredients": "Water, sugar, watermelon juice concentrate, citric acid, natural flavours, vitamin C, colour.",
+        "allergens": "No declared allergens.",
+        "nutrition": {
+          "basis": "Per 230ml pouch",
+          "energy": "50 kcal"
+        },
+        "variants": [
+          {
+            "sku": "BEV-ONCUP-WATERMELON-1",
+            "label": "Single Pouch",
+            "price": 760,
+            "units": 1,
+            "unitPrice": 760
+          },
+          {
+            "sku": "BEV-ONCUP-WATERMELON-5",
+            "label": "5 Pack",
+            "price": 3800,
+            "units": 5,
+            "unitPrice": 760
+          },
+          {
+            "sku": "BEV-ONCUP-WATERMELON-20",
+            "label": "Carton (20)",
+            "price": 15200,
+            "units": 20,
+            "unitPrice": 760
+          }
+        ],
+        "fullName": "OKF Oncup Watermelon",
+        "url": "https://kfoods.lk/products/oncup-watermelon.html",
+        "priceFrom": 760,
+        "priceTo": 15200,
+        "images": {
+          "main": "https://kfoods.lk/images/products/okf-oncup-watermelon.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/okf-oncup-watermelon.jpeg",
+          "gallery": []
+        }
+      },
+      {
+        "handle": "bacchus",
+        "name": "Bacchus Energy Drink",
+        "ko": "박카스",
+        "brand": "Dong-A",
+        "category": "Beverages",
+        "pack": "250ml",
+        "heat": null,
+        "cook": null,
+        "badge": "New",
+        "image": "images/products/dong-a-bacchus-energy-drink.jpeg",
+        "short": "Korea's original energy tonic since 1963, built on taurine, ginseng and royal jelly rather than sharp citrus.",
+        "long": "Bacchus has been on Korean shelves since 1963 and is still the drink people reach for at the end of a long shift, sold everywhere from pharmacies to convenience stores. The 250ml can carries 2,000mg of taurine and 80mg of caffeine alongside Korean ginseng extract and royal jelly, which gives it a rounder, faintly herbal sweetness instead of the sharp citrus most energy drinks lead with. Lightly carbonated and easier to finish than its size suggests.",
+        "serve": "Drink well chilled. One can is a serving — it carries about as much caffeine as a strong cup of coffee.",
+        "ingredients": "Korean ginseng extract, royal jelly, high fructose corn syrup, caffeine, taurine, inositol, sugar, nicotinamide, pyridoxine, riboflavin, thiamine nitrate, citric acid anhydrous, sucralose, L-lysine, sodium benzoate, sodium chloride, apple juice, essences (orange, pineapple, strawberry), artificial flavours and purified water.",
+        "allergens": "Contains royal jelly. Contains caffeine (80mg per can) — not recommended for children or pregnant women.",
+        "nutrition": {
+          "basis": "Per 250ml can",
+          "energy": "120 kcal",
+          "fat": "0g",
+          "satFat": "0g",
+          "carbs": "30g",
+          "fibre": null,
+          "sugars": "30g",
+          "protein": "0g",
+          "sodium": "60mg"
+        },
+        "variants": [
+          {
+            "sku": "BEV-BACCHUS-1",
+            "label": "Single Can",
+            "price": 690,
+            "units": 1,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-BACCHUS-5",
+            "label": "5 Pack",
+            "price": 3450,
+            "units": 5,
+            "unitPrice": 690
+          },
+          {
+            "sku": "BEV-BACCHUS-20",
+            "label": "Carton (20)",
+            "price": 13800,
+            "units": 20,
+            "unitPrice": 690
+          }
+        ],
+        "fullName": "Dong-A Bacchus Energy Drink",
+        "url": "https://kfoods.lk/products/bacchus.html",
+        "priceFrom": 690,
+        "priceTo": 13800,
+        "images": {
+          "main": "https://kfoods.lk/images/products/dong-a-bacchus-energy-drink.jpeg",
+          "thumb": "https://kfoods.lk/images/products/thumbs/dong-a-bacchus-energy-drink.jpeg",
+          "gallery": []
+        }
+      }
+    ]
+  }
+}

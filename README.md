@@ -1,0 +1,355 @@
+# K FOOD WhatsApp Agent + CRM
+
+A WhatsApp AI agent for **K FOOD (kfoods.lk)** — an online Korean food store delivering
+island-wide in Sri Lanka — with a small CRM and a WhatsApp-style staff dashboard.
+
+* **Backend** — FastAPI. Receives WhatsApp webhooks, runs a LangGraph agent, sends replies.
+* **Database** — Supabase (Postgres). Contacts, messages, orders, notes, menu, templates.
+* **Dashboard** — Next.js. Live chat inbox with an agent/human toggle, an order board and the
+  catalogue as staff see it.
+* **Catalogue** — the real kfoods.lk products: 30 products × 3 pack sizes (single / 5 Pack /
+  carton of 20) = 90 SKUs, with prices, heat levels, allergens, nutrition and photos.
+
+Single-tenant for the K-Food pilot, multi-tenant-ready: every table carries `business_id`
+and no query hardcodes it.
+
+---
+
+## How a message flows
+
+```
+customer → WhatsApp → Meta Cloud API
+                          │  POST /webhook  (signature checked, 200 in ms)
+                          ▼
+                    background task
+                          │
+   1. seen this wa_message_id before?  → stop (Meta retries; we must not answer twice)
+   2. contacts.get_or_create
+   3. messages.save            (inbound row)
+   4. contacts.touch_inbound   (opens the 24-hour window)
+   5. human_takeover on?       → stop (staff are handling it; the agent stays silent)
+   6. LangGraph agent          load_context → agent ⇄ tools → reply
+   7. outbound.send_text       (window checked once, here) → messages.save (outbound row)
+                          │
+                          ▼
+              Supabase Realtime → dashboard updates live
+```
+
+Everything the agent knows about prices comes from `menu_items` through the `search_menu`
+tool. Order totals — including the Rs. 400 island-wide delivery fee, waived over Rs. 5,000 —
+are recomputed from the database inside `create_order`, so a hallucinated price can never
+reach a customer. Delivery, payment, returns and contact answers come from the business
+profile through `store_info`, not from the model's memory.
+
+---
+
+## Repository layout
+
+```
+backend/           FastAPI app
+  main.py          webhook + staff API routes
+  config.py        env vars, validated at startup (fails loudly)
+  handlers.py      what happens after the webhook returns 200
+  outbound.py      the only place that decides text-vs-template and logs a send
+  auth.py          Supabase JWT check + business membership
+  whatsapp/        client.py (the only caller of Meta), parser.py, window.py, signature.py
+  db/              all database access lives here
+  agent/           graph.py, state.py, prompts.py, llm.py, tools/
+  jobs/            auto-return background job
+  tests/           89 tests, no network
+dashboard/         Next.js App Router + Tailwind
+supabase/
+  migrations/      0001_init.sql, 0002_rls.sql, 0003_functions.sql, 0004_catalog.sql
+  seed.sql         business row + message templates — run by hand
+  seed_catalog.sql GENERATED: 90 product variants, business profile, 9 FAQs
+data/              kfood-catalog.json, kfood-images.json — exported from the kfoods.lk site
+assets/
+  products/        20 product photos + index.json (which products still need one)
+  brand/           logo, hero, og image, favicon
+scripts/
+  build_seed.py    data/kfood-catalog.json -> supabase/seed_catalog.sql
+```
+
+## The catalogue
+
+The source of truth is `data/kfood-catalog.json`, exported from the kfoods.lk static site
+(`static/kfood`). It carries, per product: brand, Korean name, category, pack size, heat
+level (0–5), cooking time, short and long descriptions, serving suggestion, ingredients,
+allergens, nutrition, product URL, image, and three priced variants with SKUs.
+
+| | |
+|---|---|
+| Products | 30 (Instant Noodles, Cup Noodles, Beverages) |
+| SKUs | 90 — single, 5 Pack, carton of 20 |
+| Brands | Nongshim, Migawon, Binggrae, OKF, Dong-A |
+| Price range | Rs. 560 (Shin Ramyun Cup) – Rs. 17,900 (Shin Black carton) |
+| Photos | 20 of 30 products; the other 10 show a placeholder on the site too |
+| FAQs | 9, copied from the website so both channels answer the same way |
+
+To refresh after the website changes:
+
+```bash
+cp ../kfood/rag-export/kfood-rag-data.json data/kfood-catalog.json
+python3 scripts/build_seed.py          # rewrites supabase/seed_catalog.sql
+# then run supabase/seed_catalog.sql in Supabase — it upserts, so re-running is safe
+```
+
+Products still without a photo: kimchi, cham-pong, chapagetti, ansung, hotdak-cheese,
+toomba-cup, oncup-blue-lemon, oncup-blue-berry, oncup-green-grape, oncup-peach-iced-tea.
+Drop a real photo into the website's `images/products/`, re-export, and re-run the steps
+above.
+
+---
+
+## Setup
+
+### 1. Supabase
+
+1. Create a project (region: Singapore is closest to Sri Lanka).
+2. SQL editor → run the migrations in order: `0001_init.sql`, `0002_rls.sql`,
+   `0003_functions.sql`, `0004_catalog.sql`.
+3. Edit the `vals` block at the top of `supabase/seed.sql`, run it, and copy the printed
+   `business_id`.
+4. Run `supabase/seed_catalog.sql` — the 90 SKUs, the business profile and the FAQs.
+5. Create a staff user: Authentication → Users → Add user.
+6. Link that user to the business (bottom of `seed.sql`):
+
+   ```sql
+   insert into business_members (business_id, user_id, role)
+   values ('<business id>', '<auth user id>', 'admin');
+   ```
+
+   Without this row the dashboard signs in but shows nothing — RLS is doing its job.
+
+### 2. Meta
+
+1. developers.facebook.com → create an app → add the **WhatsApp** product.
+2. Copy the test number's `phone_number_id` and the temporary access token.
+3. Add your own phone under "To" as a test recipient (max 5).
+4. App settings → Basic → copy the **App Secret** into `WA_APP_SECRET`.
+5. Invent any string for `WA_VERIFY_TOKEN`; Meta must be given the same one.
+
+### 3. Backend
+
+```bash
+cd backend
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+cp ../.env.example ../.env     # then fill it in
+.venv/bin/uvicorn main:app --reload --port 8000
+```
+
+`GET /health` should return `{"status": "ok", "database": "ok", ...}` and list any
+production warnings.
+
+### 4. Connect the webhook
+
+```bash
+ngrok http 8000
+```
+
+In the Meta app → WhatsApp → Configuration:
+
+* **Callback URL**: `https://<your-ngrok-id>.ngrok-free.app/webhook`
+* **Verify token**: the same `WA_VERIFY_TOKEN`
+* Subscribe to the **messages** field.
+
+Message the test number from your phone. You should get a reply within a few seconds.
+
+### 5. Dashboard
+
+```bash
+cd dashboard
+npm install
+cp .env.local.example .env.local   # URL + publishable key + API URL
+npm run dev                        # http://localhost:3000
+```
+
+Sign in with the staff user you created. `NEXT_PUBLIC_*` variables are public by
+definition — never put the service role key or the WhatsApp token there.
+
+---
+
+## Environment variables
+
+Backend — one file, `.env` in the repository root (see `.env.example`). `config.py`
+resolves it by absolute path, so it loads whichever directory you start from.
+
+Do not put a trailing `# comment` on a value line: python-dotenv keeps it as part of
+the value, which silently breaks `LLM_PROVIDER`, `ENVIRONMENT` and `REQUIRE_AUTH`.
+
+
+| Variable | Notes |
+|---|---|
+| `WA_ACCESS_TOKEN` | Temporary token for testing; a permanent System User token for production |
+| `WA_PHONE_NUMBER_ID` | From the Meta dashboard |
+| `WA_VERIFY_TOKEN` | Any random string; must match what Meta is given |
+| `WA_APP_SECRET` | Verifies `X-Hub-Signature-256`. Required in production |
+| `SUPABASE_URL` | Project origin only, e.g. `https://abc.supabase.co`. Pasting the REST URL (`.../rest/v1/`) 404s every query — config trims it, but paste it clean |
+| `SUPABASE_SECRET_KEY` | `sb_secret_…`. Backend only, bypasses RLS. Legacy `SUPABASE_SERVICE_ROLE_KEY` still accepted |
+| `SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_…`. Legacy `SUPABASE_ANON_KEY` still accepted |
+| `SUPABASE_JWKS_URL` | `…/auth/v1/.well-known/jwks.json`. Verifies staff tokens locally (ES256), no call to Supabase per request |
+| `SUPABASE_JWT_SECRET` | Legacy HS256 fallback, only if JWKS is not used |
+| `LLM_PROVIDER` | `openrouter` by default. Also `gemini`, `openai`, `anthropic` |
+| `OPENROUTER_API_KEY` | From https://openrouter.ai/keys |
+| `LLM_MODEL` | Routed id, e.g. `google/gemini-3.1-flash-lite`. **Must support tool calling** — without it the agent cannot look up prices |
+| `BUSINESS_ID` | The `businesses.id` from the seed |
+| `AUTO_RETURN_MINUTES` | Human takeover expires after this many quiet minutes (default 30) |
+| `ENVIRONMENT` | `production` makes startup refuse unresolved security warnings |
+| `CORS_ORIGINS` | Comma-separated dashboard origins |
+| `REQUIRE_AUTH` | Keep `true`. `false` leaves the staff API open — local smoke tests only |
+
+---
+
+## API
+
+Public (Meta calls these):
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/webhook` | Subscription handshake; returns `hub.challenge` as plain text |
+| POST | `/webhook` | Message and status deliveries. Signature-checked, answers in milliseconds |
+| GET | `/health` | Database state and production warnings |
+
+Staff (Bearer token from Supabase Auth, must be in `business_members`):
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/messages/send` | Staff reply. Takes the chat over by default |
+| POST | `/messages/send-template` | Send an approved template (used when the window is closed) |
+| POST | `/contacts/{id}/takeover` | Agent ⇄ human switch |
+| POST | `/contacts/{id}/read` | Clear the unread badge |
+| GET | `/contacts/{id}/window` | Time left in the 24-hour window |
+| GET | `/contacts`, `/orders`, `/templates` | Lists |
+| PATCH | `/orders/{id}/status` | Change status and notify the customer |
+| GET | `/stats/usage` | Messages sent this month |
+
+---
+
+## The LLM
+
+The agent talks to OpenRouter, which speaks the OpenAI API, so one wrapper
+([agent/llm.py](backend/agent/llm.py)) serves every provider and swapping model is an env
+change, not a code change.
+
+The model **must support tool calling**. Prices, orders, delivery terms and allergens all
+come from tools; a model that cannot call them has nothing truthful to say. Verified
+against OpenRouter's live model list (per 1M tokens, input/output):
+
+| Model | Cost | Notes |
+|---|---|---|
+| `google/gemini-3.1-flash-lite` | $0.25 / $1.50 | default — 1M context, cheap, reliable tool calls |
+| `google/gemini-2.5-flash-lite` | $0.10 / $0.40 | cheapest sensible option |
+| `openai/gpt-4o-mini` | $0.15 / $0.60 | alternative if Gemini misbehaves on Sinhala |
+| `google/gemini-2.5-flash` | $0.30 / $2.50 | strongest of these, if replies need more judgement |
+
+A typical reply costs roughly 3–5k input tokens (system prompt, catalogue results, last
+10 turns) and ~100 output, so about $0.001 per customer message on the default model.
+
+To use Gemini directly instead, set `LLM_PROVIDER=gemini` and `GEMINI_API_KEY`, and change
+`LLM_MODEL` to a bare id like `gemini-2.0-flash`.
+
+## The rules this code enforces
+
+* **One reply per message.** The prompt forbids splitting, and only one send happens per
+  inbound message. Every message costs money.
+* **Idempotency.** `messages.wa_message_id` is unique and checked before the agent runs.
+  Meta retries; customers must not get two answers.
+* **The 24-hour window.** `outbound.py` checks it before every send. Outside it, free text
+  is refused and an approved template is sent instead. The dashboard shows a countdown and
+  swaps the text box for template buttons when it expires.
+* **Human takeover.** While it is on, inbound messages are stored but the agent never
+  answers. A background job hands the chat back after `AUTO_RETURN_MINUTES` of silence.
+* **No invented prices.** Tools read the catalogue; `create_order` prices each SKU from the
+  database, adds the delivery fee, and refuses SKUs that do not exist.
+* **No invented facts.** Delivery, payment, returns and contact answers come from the
+  business profile and the FAQ table via `store_info`.
+* **"Ramen" finds "Ramyun".** Catalogue search expands the words Sri Lankan customers
+  actually type (ramen, ramyeon, buldak, fire noodles, drinks, juice, cup) — without it,
+  a search for "ramen" returned 3 products instead of 16.
+* **Escalation.** Complaints, refunds, wrong orders, unreadable media, and any agent
+  failure hand the chat to a human rather than guessing.
+
+---
+
+## Tests
+
+```bash
+cd backend && .venv/bin/pytest        # 89 tests, no network calls
+cd dashboard && npm run typecheck && npm run build
+```
+
+The suite covers the parser against real Meta payload shapes, window arithmetic,
+signature verification, idempotency, the inbound pipeline (dedupe, takeover, media),
+graph wiring with a stubbed model, the outbound policy, and the HTTP surface.
+
+---
+
+## Deploy
+
+**Backend — Fly.io**
+
+```bash
+cd backend
+fly launch --no-deploy            # uses fly.toml
+fly secrets set WA_ACCESS_TOKEN=... WA_PHONE_NUMBER_ID=... WA_VERIFY_TOKEN=... \
+                WA_APP_SECRET=... SUPABASE_URL=... SUPABASE_SECRET_KEY=... \
+                SUPABASE_PUBLISHABLE_KEY=... SUPABASE_JWKS_URL=... \
+                OPENROUTER_API_KEY=... BUSINESS_ID=... \
+                ENVIRONMENT=production CORS_ORIGINS=https://your-dashboard.vercel.app
+fly deploy
+```
+
+**Backend — Railway**: point it at `backend/`, it reads `railway.json`, then set the same
+variables in the dashboard.
+
+Run **one instance**. The auto-return job and the per-contact locks are in-process; more
+than one replica means duplicate jobs. Scaling out means moving both into Postgres first.
+
+**Dashboard — Vercel**: import the repo, root directory `dashboard`, set the three
+`NEXT_PUBLIC_*` variables.
+
+Then point the Meta webhook at `https://<backend-host>/webhook`.
+
+---
+
+## Go-live checklist
+
+- [ ] New SIM added as a real phone number in the Meta app and verified (**not** the number
+      on the WhatsApp Business App — Cloud API takes the number over)
+- [ ] Meta Business Verification complete
+- [ ] Permanent System User token in `WA_ACCESS_TOKEN` (the temporary one dies in 24 hours)
+- [ ] `0002_rls.sql` applied; `select * from pg_tables where rowsecurity = false` shows nothing public
+- [ ] `WA_APP_SECRET` set; `/health` lists no warnings
+- [ ] `ENVIRONMENT=production` (startup then refuses to run with warnings)
+- [ ] Templates submitted to Meta, approved, and flipped to `approved = true` in `templates`
+- [ ] `seed_catalog.sql` run, and `select count(*) from menu_items` returns 90
+- [ ] Prices in `menu_items` still match kfoods.lk (re-run the export if the site changed)
+- [ ] Staff users added to `business_members`
+- [ ] Webhook URL points at production and the **messages** field is subscribed
+- [ ] New number on the website, Google profile and Facebook page
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| Customer gets two replies | More than one backend instance, or the unique index on `wa_message_id` is missing |
+| Webhook returns 403 | `WA_VERIFY_TOKEN` mismatch, or `WA_APP_SECRET` does not match the app |
+| Agent silent, messages stored | `human_takeover` is on — check the toggle, or wait for auto-return |
+| Sends fail with code 131047 | The 24-hour window closed. Use a template |
+| Dashboard signs in but is empty | The user is missing from `business_members` |
+| Every query 404s with "schema cache" | The migrations have not been run, or `SUPABASE_URL` includes `/rest/v1` |
+| `template_unavailable` | The template row is missing or `approved` is still false |
+| Agent says a product is not on the catalogue | `seed_catalog.sql` was not run, or the site renamed it |
+| Startup exits immediately | A required variable is missing; the error names it |
+
+---
+
+## Costs
+
+From 1 October 2026 Meta charges for service messages and utility templates sent inside
+the 24-hour window, with the first 1,000 service messages per number per month free. That
+is why the agent answers in exactly one message. The dashboard header shows the running
+monthly count.

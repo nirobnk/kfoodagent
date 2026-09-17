@@ -1,0 +1,22 @@
+[project]
+name = "kfood-whatsapp-agent"
+version = "1.0.0"
+description = "WhatsApp AI agent and CRM backend for K-Food"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".venv", "__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "ASYNC"]
+ignore = [
+  "E501",
+  "B008",    # FastAPI's Depends() in argument defaults is the documented pattern
+  "UP017",   # timezone.utc reads more clearly than the UTC alias
+  "UP037",   # quoted forward references stay readable
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]  # conftest sets the test environment before importing config

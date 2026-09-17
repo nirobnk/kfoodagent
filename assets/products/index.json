@@ -1,0 +1,168 @@
+{
+  "generated_from": "kfoods.lk static site",
+  "with_photo": 20,
+  "without_photo": [
+    "kimchi",
+    "cham-pong",
+    "chapagetti",
+    "ansung",
+    "hotdak-cheese",
+    "toomba-cup",
+    "oncup-blue-lemon",
+    "oncup-blue-berry",
+    "oncup-green-grape",
+    "oncup-peach-iced-tea"
+  ],
+  "products": {
+    "shin-ramyun": {
+      "photo": "assets/products/shin-ramyun.webp",
+      "source": "images/shin-ramyun-pack-studio.webp",
+      "url": "https://kfoods.lk/images/shin-ramyun-pack-studio.webp"
+    },
+    "shin-ramyun-black": {
+      "photo": "assets/products/shin-ramyun-black.jpeg",
+      "source": "images/products/nongshim-shin-ramyun-black-premium-v2.jpeg",
+      "url": "https://kfoods.lk/images/products/nongshim-shin-ramyun-black-premium-v2.jpeg"
+    },
+    "super-spicy": {
+      "photo": "assets/products/super-spicy.jpeg",
+      "source": "images/products/nongshim-shin-ramyun-red-super-spicy-v2.jpeg",
+      "url": "https://kfoods.lk/images/products/nongshim-shin-ramyun-red-super-spicy-v2.jpeg"
+    },
+    "spicy-chicken": {
+      "photo": "assets/products/spicy-chicken.jpeg",
+      "source": "images/products/nongdam-shin-ramyun-spicy-chicken-v2.jpeg",
+      "url": "https://kfoods.lk/images/products/nongdam-shin-ramyun-spicy-chicken-v2.jpeg"
+    },
+    "stir-fry-spicy": {
+      "photo": "assets/products/stir-fry-spicy.jpeg",
+      "source": "images/products/nongshim-shin-ramyun-stir-fry-v2.jpeg",
+      "url": "https://kfoods.lk/images/products/nongshim-shin-ramyun-stir-fry-v2.jpeg"
+    },
+    "stir-fry-cheese": {
+      "photo": "assets/products/stir-fry-cheese.jpeg",
+      "source": "images/products/nongshim-shin-ramyun-stir-fry-cheese-v2-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/nongshim-shin-ramyun-stir-fry-cheese-v2-studio.jpeg"
+    },
+    "toomba": {
+      "photo": "assets/products/toomba.jpeg",
+      "source": "images/products/nongshim-shin-ramyun-toomba-spicy-creamy.jpeg",
+      "url": "https://kfoods.lk/images/products/nongshim-shin-ramyun-toomba-spicy-creamy.jpeg"
+    },
+    "kimchi": {
+      "photo": null,
+      "source": "images/products/placeholder-noodles.svg",
+      "note": "site uses a shared placeholder; no real photo exists yet"
+    },
+    "cham-pong": {
+      "photo": null,
+      "source": "images/products/placeholder-noodles.svg",
+      "note": "site uses a shared placeholder; no real photo exists yet"
+    },
+    "chapagetti": {
+      "photo": null,
+      "source": "images/products/placeholder-noodles.svg",
+      "note": "site uses a shared placeholder; no real photo exists yet"
+    },
+    "ansung": {
+      "photo": null,
+      "source": "images/products/placeholder-noodles.svg",
+      "note": "site uses a shared placeholder; no real photo exists yet"
+    },
+    "hotdak-original": {
+      "photo": "assets/products/hotdak-original.jpeg",
+      "source": "images/products/hot-dak-stir-fry-ramen-original-v2.jpeg",
+      "url": "https://kfoods.lk/images/products/hot-dak-stir-fry-ramen-original-v2.jpeg"
+    },
+    "hotdak-carbo": {
+      "photo": "assets/products/hotdak-carbo.jpeg",
+      "source": "images/products/migawon-carbo-hotdak-stir-fry-ramen-v2.jpeg",
+      "url": "https://kfoods.lk/images/products/migawon-carbo-hotdak-stir-fry-ramen-v2.jpeg"
+    },
+    "hotdak-cheese": {
+      "photo": null,
+      "source": "images/products/placeholder-noodles.svg",
+      "note": "site uses a shared placeholder; no real photo exists yet"
+    },
+    "shin-ramyun-cup": {
+      "photo": "assets/products/shin-ramyun-cup.webp",
+      "source": "images/shin-cup-studio.webp",
+      "url": "https://kfoods.lk/images/shin-cup-studio.webp"
+    },
+    "toomba-cup": {
+      "photo": null,
+      "source": "images/products/placeholder-cup.svg",
+      "note": "site uses a shared placeholder; no real photo exists yet"
+    },
+    "banana-milk": {
+      "photo": "assets/products/banana-milk.jpeg",
+      "source": "images/products/binggrae-banana-flavoured-milk-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/binggrae-banana-flavoured-milk-studio.jpeg"
+    },
+    "melon-milk": {
+      "photo": "assets/products/melon-milk.jpeg",
+      "source": "images/products/binggrae-melon-flavoured-milk-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/binggrae-melon-flavoured-milk-studio.jpeg"
+    },
+    "strawberry-milk": {
+      "photo": "assets/products/strawberry-milk.jpeg",
+      "source": "images/products/binggrae-strawberry-flavoured-milk-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/binggrae-strawberry-flavoured-milk-studio.jpeg"
+    },
+    "okf-aloe-drink": {
+      "photo": "assets/products/okf-aloe-drink.jpeg",
+      "source": "images/products/okf-aloe-vera-king-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/okf-aloe-vera-king-studio.jpeg"
+    },
+    "olatte-peach": {
+      "photo": "assets/products/olatte-peach.jpeg",
+      "source": "images/products/okf-olatte-peach-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/okf-olatte-peach-studio.jpeg"
+    },
+    "olatte-strawberry": {
+      "photo": "assets/products/olatte-strawberry.jpeg",
+      "source": "images/products/okf-olatte-strawberry-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/okf-olatte-strawberry-studio.jpeg"
+    },
+    "olatte-apple": {
+      "photo": "assets/products/olatte-apple.jpeg",
+      "source": "images/products/okf-olatte-apple-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/okf-olatte-apple-studio.jpeg"
+    },
+    "olatte-pear-cream-soda": {
+      "photo": "assets/products/olatte-pear-cream-soda.jpeg",
+      "source": "images/products/okf-olatte-pear-cream-soda-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/okf-olatte-pear-cream-soda-studio.jpeg"
+    },
+    "oncup-blue-lemon": {
+      "photo": null,
+      "source": "images/products/placeholder-drink.svg",
+      "note": "site uses a shared placeholder; no real photo exists yet"
+    },
+    "oncup-blue-berry": {
+      "photo": null,
+      "source": "images/products/placeholder-drink.svg",
+      "note": "site uses a shared placeholder; no real photo exists yet"
+    },
+    "oncup-green-grape": {
+      "photo": null,
+      "source": "images/products/placeholder-drink.svg",
+      "note": "site uses a shared placeholder; no real photo exists yet"
+    },
+    "oncup-peach-iced-tea": {
+      "photo": null,
+      "source": "images/products/placeholder-drink.svg",
+      "note": "site uses a shared placeholder; no real photo exists yet"
+    },
+    "oncup-watermelon": {
+      "photo": "assets/products/oncup-watermelon.jpeg",
+      "source": "images/products/okf-oncup-watermelon-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/okf-oncup-watermelon-studio.jpeg"
+    },
+    "bacchus": {
+      "photo": "assets/products/bacchus.jpeg",
+      "source": "images/products/dong-a-bacchus-energy-drink-studio.jpeg",
+      "url": "https://kfoods.lk/images/products/dong-a-bacchus-energy-drink-studio.jpeg"
+    }
+  }
+}
