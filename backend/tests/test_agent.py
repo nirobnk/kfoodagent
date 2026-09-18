@@ -14,6 +14,7 @@ from agent.tools import (
     product_details,
     save_note,
     search_menu,
+    send_product_photo,
     store_info,
 )
 from tests.conftest import BUSINESS_ID, db_modules
@@ -330,3 +331,79 @@ def test_the_prompt_forbids_claiming_a_list_is_complete():
 
     assert "NEVER say or imply that a list is everything we sell" in prompt
     assert "is that all?" in prompt
+
+
+# --- product photos -------------------------------------------------------
+
+@pytest.fixture
+def photo_env(tool_env, monkeypatch):
+    """tool_env plus a recording stand-in for the outbound image send."""
+    import outbound
+
+    sent: list[dict] = []
+
+    async def fake_send_image(*, business_id, contact, image_url, caption="", sender="agent"):
+        sent.append({"image_url": image_url, "caption": caption})
+        return outbound.SendResult(ok=True, wa_message_id=f"wamid.IMG{len(sent)}")
+
+    monkeypatch.setattr(outbound, "send_image", fake_send_image)
+    fake, ctx, config = tool_env
+    return sent, ctx, config
+
+
+async def test_send_product_photo_sends_the_catalogue_image(photo_env):
+    sent, ctx, config = photo_env
+
+    result = await send_product_photo.ainvoke(
+        {"products": "Binggrae Banana Flavoured Milk"}, config=config
+    )
+
+    assert len(sent) == 1
+    assert sent[0]["image_url"].startswith("https://kfoods.lk/")
+    assert "Photo sent for" in result
+    assert ctx.photos_sent == ["Binggrae Banana Flavoured Milk"]
+
+
+async def test_send_product_photo_is_capped_so_a_reply_is_not_a_wall_of_images(photo_env):
+    """Every photo is a paid message, so "show me everything" must not send 14."""
+    from agent.tools.photos import MAX_PHOTOS
+
+    sent, _, config = photo_env
+    names = ", ".join(
+        [
+            "Binggrae Banana Flavoured Milk",
+            "Binggrae Melon Flavoured Milk",
+            "Binggrae Strawberry Flavoured Milk",
+            "OKF Aloe Vera King",
+            "Shin Ramyun Original",
+        ]
+    )
+
+    await send_product_photo.ainvoke({"products": names}, config=config)
+
+    assert len(sent) <= MAX_PHOTOS
+
+
+async def test_an_unknown_product_is_reported_not_silently_skipped(photo_env):
+    sent, _, config = photo_env
+
+    result = await send_product_photo.ainvoke({"products": "Unicorn Ramyun"}, config=config)
+
+    assert sent == []
+    assert "Not on the catalogue" in result
+
+
+async def test_no_product_named_asks_for_a_search_first(photo_env):
+    sent, _, config = photo_env
+
+    result = await send_product_photo.ainvoke({"products": "  "}, config=config)
+
+    assert sent == []
+    assert "search_menu" in result
+
+
+def test_the_prompt_tells_it_to_send_photos_rather_than_the_website():
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "send_product_photo" in prompt
+    assert "never say you cannot send photos" in prompt

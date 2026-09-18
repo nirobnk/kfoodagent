@@ -82,6 +82,61 @@ async def send_text(
     return SendResult(ok=True, wa_message_id=wa_message_id)
 
 
+async def send_image(
+    *,
+    business_id: str,
+    contact: Mapping[str, Any],
+    image_url: str,
+    caption: str = "",
+    sender: str = "agent",
+) -> SendResult:
+    """Send one product photo, subject to the same window rule as free text.
+
+    An image is a message like any other: it costs money, it is blocked outside
+    the 24-hour window, and it belongs in the `messages` table so the dashboard
+    shows staff what the customer was actually sent.
+    """
+    image_url = (image_url or "").strip()
+    if not image_url:
+        return SendResult(ok=False, reason="no_image")
+
+    if not can_send_free_text(contact):
+        log.warning(
+            "image blocked: 24h window closed",
+            extra={"wa_id": contact.get("wa_id"), "contact_id": contact.get("id")},
+        )
+        return SendResult(ok=False, reason="window_closed")
+
+    # What the dashboard shows for a photo, since there is no body text.
+    body = f"[photo] {caption}".strip() if caption else "[photo]"
+
+    client = get_client()
+    try:
+        wa_message_id = await client.send_image(contact["wa_id"], image_url, caption=caption)
+    except WhatsAppError as exc:
+        await db.messages.save(
+            business_id=business_id,
+            contact_id=contact["id"],
+            direction="out",
+            sender=sender,
+            body=body,
+            status="failed",
+            error=str(exc)[:500],
+        )
+        return SendResult(ok=False, reason=f"send_failed:{exc.code or 'unknown'}")
+
+    await db.messages.save(
+        business_id=business_id,
+        contact_id=contact["id"],
+        direction="out",
+        sender=sender,
+        body=body,
+        wa_message_id=wa_message_id or None,
+        status="sent",
+    )
+    return SendResult(ok=True, wa_message_id=wa_message_id)
+
+
 async def send_template(
     *,
     business_id: str,

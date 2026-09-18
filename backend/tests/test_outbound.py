@@ -186,3 +186,54 @@ async def test_order_notification_sends_free_text_inside_the_window(wired):
 
     assert result.ok is True
     assert wa.texts[0][1] == "We are preparing order #1043."
+
+
+@pytest.mark.asyncio
+async def test_an_image_goes_out_and_is_recorded(wired):
+    fake, wa = wired
+
+    result = await outbound.send_image(
+        business_id=BUSINESS_ID,
+        contact=contact_row(),
+        image_url="https://kfoods.lk/binggrae-banana.jpeg",
+        caption="Binggrae Banana Flavoured Milk",
+    )
+
+    assert result.ok
+    assert wa.images == [
+        ("94771234567", "https://kfoods.lk/binggrae-banana.jpeg", "Binggrae Banana Flavoured Milk")
+    ]
+    # The dashboard has to show staff that a photo went out, not a blank row.
+    saved = fake.tables["messages"][-1]
+    assert saved["body"] == "[photo] Binggrae Banana Flavoured Milk"
+    assert saved["status"] == "sent"
+
+
+@pytest.mark.asyncio
+async def test_an_image_obeys_the_same_24_hour_window_as_text(wired):
+    fake, wa = wired
+
+    result = await outbound.send_image(
+        business_id=BUSINESS_ID,
+        contact=contact_row(hours_ago=30),
+        image_url="https://kfoods.lk/binggrae-banana.jpeg",
+    )
+
+    assert result.ok is False
+    assert result.reason == "window_closed"
+    assert wa.images == []
+
+
+@pytest.mark.asyncio
+async def test_a_failed_image_is_recorded_as_failed(wired):
+    fake, wa = wired
+    wa.fail_with = WhatsAppError("bad media url", code=131053)
+
+    result = await outbound.send_image(
+        business_id=BUSINESS_ID,
+        contact=contact_row(),
+        image_url="https://kfoods.lk/missing.jpeg",
+    )
+
+    assert result.ok is False
+    assert fake.tables["messages"][-1]["status"] == "failed"

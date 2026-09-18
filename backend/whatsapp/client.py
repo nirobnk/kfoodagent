@@ -119,6 +119,25 @@ class WhatsAppClient:
         }
         return await self._send(payload, wa_id=wa_id, kind="text")
 
+    async def send_image(self, wa_id: str, image_url: str, *, caption: str = "") -> str:
+        """Send an image by public URL. Only legal inside the 24-hour window.
+
+        Meta fetches the URL itself, so nothing is uploaded here — but that also
+        means a URL Meta cannot reach fails the send rather than degrading to a
+        broken image. The caption is what the customer reads under the photo.
+        """
+        image: dict[str, Any] = {"link": image_url}
+        if caption:
+            image["caption"] = caption[:1024]
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": wa_id,
+            "type": "image",
+            "image": image,
+        }
+        return await self._send(payload, wa_id=wa_id, kind="image")
+
     async def send_template(
         self,
         wa_id: str,

@@ -291,6 +291,7 @@ class FakeWhatsApp:
     def __init__(self, fail_with: Exception | None = None) -> None:
         self.texts: list[tuple[str, str]] = []
         self.templates: list[tuple[str, str, list[Any]]] = []
+        self.images: list[tuple[str, str, str]] = []
         self.read_receipts: list[str] = []
         self.fail_with = fail_with
         self._counter = 0
@@ -301,6 +302,13 @@ class FakeWhatsApp:
         self.texts.append((wa_id, body))
         self._counter += 1
         return f"wamid.OUT{self._counter}"
+
+    async def send_image(self, wa_id: str, image_url: str, *, caption: str = "") -> str:
+        if self.fail_with:
+            raise self.fail_with
+        self.images.append((wa_id, image_url, caption))
+        self._counter += 1
+        return f"wamid.IMG{self._counter}"
 
     async def send_template(self, wa_id: str, name: str, *, language: str = "en",
                             variables: Any = ()) -> str:
