@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     llm_model: str = "google/gemini-3.1-flash-lite"
     llm_temperature: float = 0.2
     llm_max_tool_loops: int = 6
+    # A WhatsApp reply is a few hundred tokens. Left unset, providers reserve
+    # credit against the model's full output ceiling (65k on Gemini Flash),
+    # which fails with a 402 on a low balance before a single token is written.
+    llm_max_tokens: int = 1024
 
     # --- App ---
     business_id: str = Field(min_length=1)

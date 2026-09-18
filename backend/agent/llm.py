@@ -29,6 +29,7 @@ def get_llm(provider: str | None = None, model: str | None = None) -> Any:
             api_key=settings.openrouter_api_key,
             base_url=settings.openrouter_base_url,
             temperature=settings.llm_temperature,
+            max_tokens=settings.llm_max_tokens,
             max_retries=2,
             default_headers={
                 "HTTP-Referer": settings.openrouter_site_url,
@@ -43,6 +44,7 @@ def get_llm(provider: str | None = None, model: str | None = None) -> Any:
             model=model,
             google_api_key=settings.gemini_api_key,
             temperature=settings.llm_temperature,
+            max_tokens=settings.llm_max_tokens,
             max_retries=2,
         )
 
@@ -53,6 +55,7 @@ def get_llm(provider: str | None = None, model: str | None = None) -> Any:
             model=model,
             api_key=settings.openai_api_key,
             temperature=settings.llm_temperature,
+            max_tokens=settings.llm_max_tokens,
             max_retries=2,
         )
 
@@ -63,6 +66,7 @@ def get_llm(provider: str | None = None, model: str | None = None) -> Any:
             model=model,
             api_key=settings.anthropic_api_key,
             temperature=settings.llm_temperature,
+            max_tokens=settings.llm_max_tokens,
             max_retries=2,
         )
 
