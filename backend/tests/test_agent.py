@@ -295,3 +295,38 @@ async def test_a_customer_asking_for_ramen_finds_ramyun(tool_env):
     result = await search_menu.ainvoke({"query": "ramen"}, config=config)
 
     assert "Shin Ramyun Original" in result
+
+
+def test_a_truncated_search_tells_the_agent_to_say_how_many_are_missing():
+    """A customer asked "is that all you have" and was told yes, while four
+    products sat behind the truncation line. The line has to read as an
+    instruction, not as a hint the model can take or leave."""
+    from agent.tools.menu import MAX_PRODUCTS, format_products
+
+    products = [
+        {"product_name": f"Product {i}", "category": "Beverages", "variants": []}
+        for i in range(MAX_PRODUCTS + 4)
+    ]
+
+    text = format_products(products)
+
+    assert "+4 more products not shown" in text
+    assert "NOT the full range" in text
+    assert "tell the customer there are 4 more" in text
+
+
+def test_a_complete_search_carries_no_truncation_notice():
+    from agent.tools.menu import format_products
+
+    text = format_products(
+        [{"product_name": "Only One", "category": "Beverages", "variants": []}]
+    )
+
+    assert "more products" not in text
+
+
+def test_the_prompt_forbids_claiming_a_list_is_complete():
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "NEVER say or imply that a list is everything we sell" in prompt
+    assert "is that all?" in prompt

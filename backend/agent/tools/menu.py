@@ -13,7 +13,12 @@ from agent.state import run_context
 
 log = logging.getLogger(__name__)
 
-MAX_PRODUCTS = 12
+# The whole catalogue is around 20 products, so a cap of 12 truncated ordinary
+# category questions like "what drinks do you have" (16 matches). Descriptions
+# are already dropped above 6 products, so a full list stays cheap. Raise this
+# with the catalogue; the "+N more" line below is what keeps it honest when a
+# search does overflow.
+MAX_PRODUCTS = 20
 
 
 def money(value: Any) -> str:
@@ -55,7 +60,14 @@ def format_products(products: list[dict[str, Any]]) -> str:
     shown = products[:MAX_PRODUCTS]
     text = "\n".join(format_product(p, with_description=len(shown) <= 6) for p in shown)
     if len(products) > len(shown):
-        text += f"\n(+{len(products) - len(shown)} more products — narrow the search if needed.)"
+        held = len(products) - len(shown)
+        # Spelled out as an instruction, because "narrow the search if needed"
+        # read as advice to the model and it answered "yes, that's everything"
+        # to a customer while four products sat behind this line.
+        text += (
+            f"\n(+{held} more products not shown. This is NOT the full range: "
+            f"tell the customer there are {held} more and offer to list them.)"
+        )
     return text
 
 
