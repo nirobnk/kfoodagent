@@ -81,3 +81,4 @@ temp/
 *.sqlite
 *.sqlite3
 *.db
+run.txt
