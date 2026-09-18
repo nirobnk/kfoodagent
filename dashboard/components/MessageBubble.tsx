@@ -28,6 +28,22 @@ export function MessageBubble({ message }: { message: Message }) {
           </div>
         )}
 
+        {message.media_url && (
+          // Staff need to see the photo the customer got, not a line of text
+          // describing it. The catalogue is served from kfoods.lk, so this is a
+          // plain <img>: next/image cannot optimise a remote host that is not
+          // declared, and a static export has no optimiser to run anyway.
+          <a href={message.media_url} target="_blank" rel="noreferrer">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={message.media_url}
+              alt={message.body || 'photo'}
+              className="mb-1 max-h-60 w-auto rounded-md border border-black/5 object-cover"
+              loading="lazy"
+            />
+          </a>
+        )}
+
         <p className="whitespace-pre-wrap break-words">
           {message.body || <span className="italic text-wa-muted">[{message.message_type}]</span>}
         </p>

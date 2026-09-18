@@ -70,6 +70,7 @@ export function ChatList({
                   <span className="mt-0.5 flex items-center gap-2">
                     <span className="truncate text-sm text-wa-muted">
                       {preview?.direction === 'out' ? 'You: ' : ''}
+                      {preview?.message_type === 'image' && '📷 '}
                       {preview?.body || 'No messages yet'}
                     </span>
                     {contact.unread_count > 0 && (

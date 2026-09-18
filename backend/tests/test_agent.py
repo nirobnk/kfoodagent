@@ -407,3 +407,34 @@ def test_the_prompt_tells_it_to_send_photos_rather_than_the_website():
 
     assert "send_product_photo" in prompt
     assert "never say you cannot send photos" in prompt
+
+
+async def test_a_webp_photo_is_reported_missing_rather_than_failing(photo_env, monkeypatch):
+    """WhatsApp treats .webp as a sticker and answers "Media upload error",
+    which a customer saw. Skip it before spending the call."""
+    import db as db_module
+
+    sent, _, config = photo_env
+    real = db_module.menu.get_product_detail
+
+    async def webp_product(business_id, query):
+        product = await real(business_id, query)
+        if product:
+            product["image_url"] = "https://kfoods.lk/images/shin-ramyun-pack.webp"
+        return product
+
+    monkeypatch.setattr(db_module.menu, "get_product_detail", webp_product)
+
+    result = await send_product_photo.ainvoke(
+        {"products": "Shin Ramyun Original"}, config=config
+    )
+
+    assert sent == []
+    assert "No photo on file" in result
+
+
+def test_the_prompt_asks_for_one_product_per_line_with_a_price():
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "one product per line" in prompt
+    assert "never drop the price" in prompt

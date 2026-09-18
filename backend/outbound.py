@@ -107,8 +107,10 @@ async def send_image(
         )
         return SendResult(ok=False, reason="window_closed")
 
-    # What the dashboard shows for a photo, since there is no body text.
-    body = f"[photo] {caption}".strip() if caption else "[photo]"
+    # The dashboard renders media_url as the image and shows this underneath,
+    # so the body is the caption alone. "[photo]" only stands in when a photo
+    # carried no caption, so a chat-list preview still reads as something.
+    body = caption.strip() or "[photo]"
 
     client = get_client()
     try:
@@ -120,6 +122,8 @@ async def send_image(
             direction="out",
             sender=sender,
             body=body,
+            media_url=image_url,
+            message_type="image",
             status="failed",
             error=str(exc)[:500],
         )
@@ -131,6 +135,8 @@ async def send_image(
         direction="out",
         sender=sender,
         body=body,
+        media_url=image_url,
+        message_type="image",
         wa_message_id=wa_message_id or None,
         status="sent",
     )

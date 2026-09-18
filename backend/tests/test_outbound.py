@@ -203,9 +203,12 @@ async def test_an_image_goes_out_and_is_recorded(wired):
     assert wa.images == [
         ("94771234567", "https://kfoods.lk/binggrae-banana.jpeg", "Binggrae Banana Flavoured Milk")
     ]
-    # The dashboard has to show staff that a photo went out, not a blank row.
+    # The dashboard renders the picture from media_url; without it staff saw a
+    # line of text where the photo the customer got should have been.
     saved = fake.tables["messages"][-1]
-    assert saved["body"] == "[photo] Binggrae Banana Flavoured Milk"
+    assert saved["body"] == "Binggrae Banana Flavoured Milk"
+    assert saved["media_url"] == "https://kfoods.lk/binggrae-banana.jpeg"
+    assert saved["message_type"] == "image"
     assert saved["status"] == "sent"
 
 
@@ -236,4 +239,8 @@ async def test_a_failed_image_is_recorded_as_failed(wired):
     )
 
     assert result.ok is False
-    assert fake.tables["messages"][-1]["status"] == "failed"
+    failed = fake.tables["messages"][-1]
+    assert failed["status"] == "failed"
+    # Still recorded as an image, so staff see what was attempted.
+    assert failed["media_url"] == "https://kfoods.lk/missing.jpeg"
+    assert failed["message_type"] == "image"

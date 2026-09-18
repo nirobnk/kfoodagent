@@ -24,6 +24,19 @@ log = logging.getLogger(__name__)
 # request like "show me the drinks" sends a taste, not the whole shelf.
 MAX_PHOTOS = 3
 
+# WhatsApp accepts only JPEG and PNG for an image message. A .webp is a
+# sticker to Meta, and sending one comes back as "Media upload error" — which
+# is what happened to Shin Ramyun Original in front of a customer. Two rows in
+# the catalogue are webp; treat them as having no photo rather than burning an
+# API call to be told so.
+SENDABLE_SUFFIXES = (".jpg", ".jpeg", ".png")
+
+
+def _is_sendable(image_url: str) -> bool:
+    path = image_url.split("?", 1)[0].split("#", 1)[0].lower()
+    return path.endswith(SENDABLE_SUFFIXES)
+
+
 # Words that carry no identity, so their absence should not reject a match.
 _FILLER = {"the", "and", "pack", "flavour", "flavoured", "flavor", "drink", "cup"}
 
@@ -89,7 +102,7 @@ async def send_product_photo(products: str, config: RunnableConfig) -> str:
 
         image_url = (product.get("image_url") or "").strip()
         label = product.get("product_name") or name
-        if not image_url:
+        if not image_url or not _is_sendable(image_url):
             missing.append(label)
             continue
 
