@@ -23,6 +23,18 @@ REPO_DIR = BACKEND_DIR.parent
 ENV_FILES = (REPO_DIR / ".env", BACKEND_DIR / ".env")
 
 
+# The model to use when LLM_MODEL is not set. Each provider names its models
+# differently — an OpenRouter id carries a vendor prefix ("google/…") that the
+# vendor's own API rejects — so a single shared default cannot serve all four.
+# Keeping them here means switching provider is one env change, not two.
+DEFAULT_MODELS: dict[str, str] = {
+    "openrouter": "google/gemini-2.5-flash",
+    "openai": "gpt-4o-mini",
+    "gemini": "gemini-2.0-flash",
+    "anthropic": "claude-haiku-4-5-20251001",
+}
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=ENV_FILES,
@@ -60,7 +72,9 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     openai_api_key: str = ""
     anthropic_api_key: str = ""
-    llm_model: str = "google/gemini-3.1-flash-lite"
+    # Optional override. Blank means "whatever DEFAULT_MODELS says for the
+    # provider in use", so LLM_PROVIDER can be changed on its own.
+    llm_model: str = ""
     llm_temperature: float = 0.2
     llm_max_tool_loops: int = 6
     # A WhatsApp reply is a few hundred tokens. Left unset, providers reserve
@@ -133,6 +147,21 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.environment == "production"
 
+    @property
+    def model(self) -> str:
+        """The model id to send, honouring LLM_MODEL when it is set."""
+        return self.llm_model or DEFAULT_MODELS[self.llm_provider]
+
+    def model_matches_provider(self) -> bool:
+        """Catch the classic slip: switching provider but not the model id.
+
+        OpenRouter routes by a "vendor/model" id; the vendors' own APIs reject
+        that prefix and answer 404. Anything else is left alone, because model
+        names change far faster than this file does.
+        """
+        prefixed = "/" in self.model
+        return prefixed if self.llm_provider == "openrouter" else not prefixed
+
     def llm_api_key(self) -> str:
         return {
             "openrouter": self.openrouter_api_key,
@@ -150,6 +179,13 @@ class Settings(BaseSettings):
             problems.append("REQUIRE_AUTH is false: the staff API is unauthenticated.")
         if not self.llm_api_key():
             problems.append(f"No API key set for LLM_PROVIDER={self.llm_provider}.")
+        if self.llm_model and not self.model_matches_provider():
+            problems.append(
+                f"LLM_MODEL={self.llm_model!r} does not look like a "
+                f"{self.llm_provider} model id. Only OpenRouter uses a "
+                f'"vendor/model" prefix; clear LLM_MODEL to use the default '
+                f"({DEFAULT_MODELS[self.llm_provider]})."
+            )
         if not self.supabase_jwks_url and not self.supabase_jwt_secret and not self.supabase_client_key:
             problems.append(
                 "None of SUPABASE_JWKS_URL, SUPABASE_JWT_SECRET or SUPABASE_PUBLISHABLE_KEY "
