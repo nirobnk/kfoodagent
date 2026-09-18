@@ -1,0 +1,23 @@
+# Heroku container deploy for the backend.
+#
+#   heroku create kfood-agent
+#   heroku stack:set container -a kfood-agent
+#   git push heroku main
+#
+# The dashboard is not built here — it lives on Cloudflare Pages.
+
+build:
+  docker:
+    # Paths are relative to this file, and Heroku sets the Docker build
+    # context to the directory holding the Dockerfile — so backend/ is the
+    # context and backend/Dockerfile's COPY lines resolve unchanged.
+    web: backend/Dockerfile
+
+run:
+  # Overrides the Dockerfile CMD, which hardcodes port 8000. Heroku assigns a
+  # port per dyno and expects the process to bind to it or the boot fails.
+  #
+  # One worker, deliberately: the per-contact locks in handlers.py and the
+  # auto-return job are in-process. A second worker means duplicate replies to
+  # real customers. Do not scale this dyno horizontally either.
+  web: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers

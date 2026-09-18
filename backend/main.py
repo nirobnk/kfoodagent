@@ -80,7 +80,11 @@ app.add_middleware(
     allow_origins=settings.cors_origin_list,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    # ngrok-skip-browser-warning: while the API is exposed through a free ngrok
+    # tunnel, browser requests are answered with ngrok's interstitial HTML page
+    # instead of the API. That header opts out of it, so the preflight has to
+    # allow it. Harmless once the backend has a real domain.
+    allow_headers=["Authorization", "Content-Type", "ngrok-skip-browser-warning"],
 )
 
 

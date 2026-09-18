@@ -32,6 +32,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
+      // A free ngrok tunnel answers browser requests with an interstitial HTML
+      // page unless this is set. Any other backend ignores it.
+      'ngrok-skip-browser-warning': '1',
       ...(init.headers ?? {}),
     },
     cache: 'no-store',
