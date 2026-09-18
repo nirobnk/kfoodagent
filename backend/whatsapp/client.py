@@ -63,7 +63,7 @@ class WhatsAppClient:
         api_base: str | None = None,
         timeout: float = 15.0,
     ) -> None:
-        self._token = access_token or settings.wa_access_token
+        self._token = access_token or settings.wa_access_token.get_secret_value()
         self._phone_number_id = phone_number_id or settings.wa_phone_number_id
         self._base = (api_base or settings.graph_api_base).rstrip("/")
         self._client = httpx.AsyncClient(

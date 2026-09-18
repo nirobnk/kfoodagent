@@ -104,7 +104,9 @@ async def health() -> schemas.HealthResponse:
         status="ok" if database == "ok" else "degraded",
         environment=settings.environment,
         database=database,
-        whatsapp_configured=bool(settings.wa_access_token and settings.wa_phone_number_id),
+        whatsapp_configured=bool(
+            settings.wa_access_token.get_secret_value() and settings.wa_phone_number_id
+        ),
         warnings=settings.check_production_readiness(),
     )
 
@@ -125,7 +127,7 @@ async def verify_webhook(request: Request) -> PlainTextResponse:
     token = params.get("hub.verify_token")
     challenge = params.get("hub.challenge", "")
 
-    if mode == "subscribe" and token == settings.wa_verify_token:
+    if mode == "subscribe" and token == settings.wa_verify_token.get_secret_value():
         log.info("webhook verified by Meta")
         return PlainTextResponse(challenge, status_code=200)
 
@@ -146,7 +148,7 @@ async def receive_webhook(
     """
     raw = await request.body()
 
-    if not verify_signature(settings.wa_app_secret, raw, x_hub_signature_256):
+    if not verify_signature(settings.wa_app_secret.get_secret_value(), raw, x_hub_signature_256):
         log.warning("webhook signature rejected")
         raise HTTPException(status_code=403, detail="invalid signature")
 

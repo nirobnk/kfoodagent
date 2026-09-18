@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import SecretStr
 
 from agent.llm import get_llm
 from agent.tools import TOOLS
@@ -17,7 +18,7 @@ def fresh_cache():
 
 
 def test_openrouter_points_at_openrouter(monkeypatch):
-    monkeypatch.setattr(settings, "openrouter_api_key", "sk-or-test")
+    monkeypatch.setattr(settings, "openrouter_api_key", SecretStr("sk-or-test"))
 
     llm = get_llm("openrouter", "google/gemini-3.1-flash-lite")
 
@@ -28,7 +29,7 @@ def test_openrouter_points_at_openrouter(monkeypatch):
 
 
 def test_openrouter_model_can_be_swapped_by_env(monkeypatch):
-    monkeypatch.setattr(settings, "openrouter_api_key", "sk-or-test")
+    monkeypatch.setattr(settings, "openrouter_api_key", SecretStr("sk-or-test"))
     monkeypatch.setattr(settings, "llm_provider", "openrouter")
     monkeypatch.setattr(settings, "llm_model", "openai/gpt-4o-mini")
 
@@ -36,7 +37,7 @@ def test_openrouter_model_can_be_swapped_by_env(monkeypatch):
 
 
 def test_tools_bind_to_the_openrouter_model(monkeypatch):
-    monkeypatch.setattr(settings, "openrouter_api_key", "sk-or-test")
+    monkeypatch.setattr(settings, "openrouter_api_key", SecretStr("sk-or-test"))
 
     bound = get_llm("openrouter", "google/gemini-3.1-flash-lite").bind_tools(TOOLS)
 
@@ -45,7 +46,7 @@ def test_tools_bind_to_the_openrouter_model(monkeypatch):
 
 
 def test_gemini_direct_still_works(monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", "gm-test")
+    monkeypatch.setattr(settings, "gemini_api_key", SecretStr("gm-test"))
 
     llm = get_llm("gemini", "gemini-2.0-flash")
 
@@ -59,9 +60,9 @@ def test_an_unknown_provider_fails_loudly():
 
 def test_the_api_key_follows_the_provider(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "openrouter")
-    monkeypatch.setattr(settings, "openrouter_api_key", "sk-or-test")
+    monkeypatch.setattr(settings, "openrouter_api_key", SecretStr("sk-or-test"))
     assert settings.llm_api_key() == "sk-or-test"
 
     monkeypatch.setattr(settings, "llm_provider", "gemini")
-    monkeypatch.setattr(settings, "gemini_api_key", "gm-test")
+    monkeypatch.setattr(settings, "gemini_api_key", SecretStr("gm-test"))
     assert settings.llm_api_key() == "gm-test"

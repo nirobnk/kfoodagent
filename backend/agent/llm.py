@@ -53,7 +53,7 @@ def get_llm(provider: str | None = None, model: str | None = None) -> Any:
 
         return ChatOpenAI(
             model=model,
-            api_key=settings.openrouter_api_key,
+            api_key=settings.api_key_for(provider),
             base_url=settings.openrouter_base_url,
             temperature=settings.llm_temperature,
             max_tokens=settings.llm_max_tokens,
@@ -72,7 +72,7 @@ def get_llm(provider: str | None = None, model: str | None = None) -> Any:
 
         return ChatGoogleGenerativeAI(
             model=model,
-            google_api_key=settings.gemini_api_key,
+            google_api_key=settings.api_key_for(provider),
             temperature=settings.llm_temperature,
             max_tokens=settings.llm_max_tokens,
             max_retries=2,
@@ -86,7 +86,7 @@ def get_llm(provider: str | None = None, model: str | None = None) -> Any:
 
         return ChatOpenAI(
             model=model,
-            api_key=settings.openai_api_key,
+            api_key=settings.api_key_for(provider),
             temperature=settings.llm_temperature,
             max_tokens=settings.llm_max_tokens,
             max_retries=2,
@@ -100,7 +100,7 @@ def get_llm(provider: str | None = None, model: str | None = None) -> Any:
 
         return ChatAnthropic(
             model=model,
-            api_key=settings.anthropic_api_key,
+            api_key=settings.api_key_for(provider),
             temperature=settings.llm_temperature,
             max_tokens=settings.llm_max_tokens,
             max_retries=2,

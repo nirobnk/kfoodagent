@@ -89,7 +89,7 @@ async def _verify_local(token: str) -> dict[str, Any] | None:
     try:
         claims = jwt.decode(
             token,
-            settings.supabase_jwt_secret,
+            settings.supabase_jwt_secret.get_secret_value(),
             algorithms=["HS256"],
             audience="authenticated",
             options={"require": ["exp", "sub"]},
@@ -159,7 +159,7 @@ async def require_staff(authorization: str | None = Header(default=None)) -> Pri
     else:
         if settings.supabase_jwks_url:
             user = await _verify_jwks(token)
-        elif settings.supabase_jwt_secret:
+        elif settings.supabase_jwt_secret.get_secret_value():
             user = await _verify_local(token)
         else:
             user = await _verify_remote(token)
