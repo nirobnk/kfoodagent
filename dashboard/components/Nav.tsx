@@ -56,6 +56,7 @@ export function Nav({ email }: { email?: string | null }) {
         {link('/', 'Chats')}
         {link('/orders', 'Orders')}
         {link('/products', 'Catalogue')}
+        {link('/inventory', 'Stock')}
       </nav>
 
       <div className="ml-auto flex items-center gap-3">

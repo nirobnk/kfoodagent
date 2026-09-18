@@ -142,6 +142,8 @@ class FakeQuery:
             row = self.db.new_row(self.table_name, payload)
             self.db.enforce_unique(self.table_name, row)
             rows.append(row)
+            if self.table_name == "inventory_movements":
+                self.db.apply_stock_trigger(row)
             created.append(dict(row))
         return created
 
@@ -234,6 +236,11 @@ class FakeSupabase:
                 "error": None,
             },
             "orders": {"status": "new", "items": [], "total": 0, "notes": None},
+            "inventory_movements": {
+                "order_id": None,
+                "note": None,
+                "created_by": "system",
+            },
         }
     )
 
@@ -266,6 +273,17 @@ class FakeSupabase:
             ]
             if existing:
                 raise UniqueViolation("duplicate key value violates unique constraint")
+        if table == "inventory_movements" and row.get("reason") == "sold" and row.get("order_id"):
+            existing = [
+                r
+                for r in self.tables.get("inventory_movements", [])
+                if r is not row
+                and r.get("reason") == "sold"
+                and r.get("order_id") == row.get("order_id")
+                and r.get("menu_item_id") == row.get("menu_item_id")
+            ]
+            if existing:
+                raise UniqueViolation("one sale per order per item")
         if table == "contacts":
             existing = [
                 r
@@ -276,6 +294,20 @@ class FakeSupabase:
             ]
             if existing:
                 raise UniqueViolation("duplicate contact")
+
+    def apply_stock_trigger(self, row: dict[str, Any], *, removing: bool = False) -> None:
+        """Stand in for inventory_movements_apply in 0005_inventory.sql.
+
+        Without it the cached quantity never moves here, and every test about
+        selling or restocking would pass against a number that production
+        maintains and this fake does not.
+        """
+        delta = int(row.get("delta") or 0)
+        if removing:
+            delta = -delta
+        for item in self.tables.get("menu_items", []):
+            if item.get("id") == row.get("menu_item_id"):
+                item["stock_quantity"] = int(item.get("stock_quantity") or 0) + delta
 
     # -- helpers for tests -------------------------------------------------
     def seed(self, table: str, rows: list[dict[str, Any]]) -> None:

@@ -16,7 +16,7 @@ TABLE = "menu_items"
 FIELDS = (
     "id,sku,handle,name,product_name,variant_label,units,price,unit_price,brand,"
     "korean_name,category,pack_size,heat_level,cook_time,badge,short_description,"
-    "image_url,product_url,available"
+    "image_url,product_url,available,track_stock,stock_quantity"
 )
 
 DETAIL_FIELDS = FIELDS + ",long_description,serving_suggestion,ingredients,allergens,nutrition"
@@ -93,6 +93,10 @@ def group_by_product(variants: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "price": float(row.get("price") or 0),
                 "units": row.get("units") or 1,
                 "unit_price": float(row.get("unit_price") or 0),
+                # Only meaningful when track_stock is on; an untracked variant
+                # is unlimited, which is how everything behaved before stock.
+                "track_stock": bool(row.get("track_stock")),
+                "stock_quantity": int(row.get("stock_quantity") or 0),
             }
         )
 

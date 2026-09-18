@@ -54,6 +54,7 @@ async def create_order(
 
     resolved: list[dict] = []
     unknown: list[str] = []
+    short: list[str] = []
     subtotal = 0.0
 
     for line in items:
@@ -63,6 +64,18 @@ async def create_order(
         if item is None:
             unknown.append(line.sku)
             continue
+
+        # The prompt can ask the agent not to sell what is gone; only this can
+        # stop it. An untracked item is unlimited, as it was before stock.
+        if item.get("track_stock"):
+            on_hand = int(item.get("stock_quantity") or 0)
+            if on_hand < line.quantity:
+                short.append(
+                    f"{item.get('product_name') or line.sku} "
+                    f"({item.get('variant_label') or 'unit'}): asked for {line.quantity}, "
+                    f"{on_hand} in stock"
+                )
+                continue
 
         price = float(item.get("price") or 0)
         line_total = price * line.quantity
@@ -78,6 +91,14 @@ async def create_order(
                 "unit_price": price,
                 "subtotal": line_total,
             }
+        )
+
+    if short:
+        return (
+            "Not enough stock, so no order was created: "
+            + "; ".join(short)
+            + ". Tell the customer honestly what is available, offer the quantity we do "
+            "have or a similar product, and only create the order once they agree."
         )
 
     if unknown:

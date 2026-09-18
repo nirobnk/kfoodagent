@@ -448,3 +448,59 @@ def test_the_prompt_lets_the_agent_give_out_published_bank_details():
 
     assert "GIVE them the bank, branch, account name and account number" in prompt
     assert "Do not escalate merely because someone asks for bank details" in prompt
+
+
+# --- stock ----------------------------------------------------------------
+
+async def test_create_order_refuses_to_sell_more_than_is_in_stock(tool_env):
+    """The prompt can ask the agent not to oversell; only this can stop it."""
+    fake, _, config = tool_env
+    item = next(r for r in fake.rows("menu_items") if r["sku"] == "RAM-SHIN-1")
+    item["track_stock"] = True
+    item["stock_quantity"] = 3
+
+    result = await create_order.ainvoke(
+        {"items": [{"sku": "RAM-SHIN-1", "quantity": 10}]}, config=config
+    )
+
+    assert "Not enough stock" in result
+    assert "asked for 10, 3 in stock" in result
+    assert fake.rows("orders") == []
+
+
+async def test_create_order_still_sells_what_is_in_stock(tool_env):
+    fake, _, config = tool_env
+    item = next(r for r in fake.rows("menu_items") if r["sku"] == "RAM-SHIN-1")
+    item["track_stock"] = True
+    item["stock_quantity"] = 10
+
+    result = await create_order.ainvoke(
+        {"items": [{"sku": "RAM-SHIN-1", "quantity": 2}]}, config=config
+    )
+
+    assert "created" in result.lower()
+    assert len(fake.rows("orders")) == 1
+
+
+async def test_an_untracked_product_has_no_stock_limit(tool_env):
+    """Nothing changes for a product nobody is counting."""
+    fake, _, config = tool_env
+    item = next(r for r in fake.rows("menu_items") if r["sku"] == "RAM-SHIN-1")
+    item["track_stock"] = False
+    item["stock_quantity"] = 0
+
+    result = await create_order.ainvoke(
+        {"items": [{"sku": "RAM-SHIN-1", "quantity": 50}]}, config=config
+    )
+
+    assert "Not enough stock" not in result
+    assert len(fake.rows("orders")) == 1
+
+
+def test_search_menu_says_nothing_about_stock_it_does_not_track():
+    from agent.tools.menu import stock_note
+
+    assert stock_note({"track_stock": False, "stock_quantity": 0}) == ""
+    assert "OUT OF STOCK" in stock_note({"track_stock": True, "stock_quantity": 0})
+    assert "only 2 left" in stock_note({"track_stock": True, "stock_quantity": 2})
+    assert stock_note({"track_stock": True, "stock_quantity": 99}) == ""

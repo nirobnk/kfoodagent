@@ -20,12 +20,33 @@ log = logging.getLogger(__name__)
 # search does overflow.
 MAX_PRODUCTS = 20
 
+# At or below this the agent warns the customer, so a last pack is not promised
+# to two people at once.
+LOW_STOCK = 3
+
 
 def money(value: Any) -> str:
     try:
         return f"Rs. {float(value):,.0f}"
     except (TypeError, ValueError):
         return f"Rs. {value}"
+
+
+def stock_note(variant: dict[str, Any]) -> str:
+    """What the agent is allowed to say about availability, if anything.
+
+    An untracked variant says nothing at all, because "in stock" would be a
+    claim nobody has checked. Only a variant someone is actually counting can
+    be reported as out or running low.
+    """
+    if not variant.get("track_stock"):
+        return ""
+    on_hand = int(variant.get("stock_quantity") or 0)
+    if on_hand <= 0:
+        return " OUT OF STOCK — do not sell this, offer an alternative"
+    if on_hand <= LOW_STOCK:
+        return f" only {on_hand} left"
+    return ""
 
 
 def format_product(product: dict[str, Any], *, with_description: bool = True) -> str:
@@ -44,7 +65,8 @@ def format_product(product: dict[str, Any], *, with_description: bool = True) ->
     line = head + " · " + " · ".join(str(f) for f in facts if f)
 
     variants = " · ".join(
-        f"{v['label']} {money(v['price'])} [{v['sku']}]" for v in product.get("variants", [])
+        f"{v['label']} {money(v['price'])} [{v['sku']}]{stock_note(v)}"
+        for v in product.get("variants", [])
     )
     lines = [line, f"  {variants}"]
 

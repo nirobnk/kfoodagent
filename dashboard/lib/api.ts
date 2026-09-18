@@ -1,7 +1,15 @@
 'use client';
 
 import { createClient } from './supabase';
-import type { Order, OrderStatus, Template, Usage } from './types';
+import type {
+  Order,
+  OrderStatus,
+  StockItem,
+  StockMovement,
+  StockReason,
+  Template,
+  Usage,
+} from './types';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
@@ -108,7 +116,53 @@ export const api = {
   usage() {
     return request<Usage>('/stats/usage');
   },
+
+  listStock(trackedOnly = false) {
+    const query = trackedOnly ? '?tracked_only=true' : '';
+    return request<{ items: StockItem[] }>(`/inventory${query}`);
+  },
+
+  listStockMovements(menuItemId?: string, limit = 50) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (menuItemId) params.set('menu_item_id', menuItemId);
+    return request<{ movements: StockMovement[] }>(`/inventory/movements?${params}`);
+  },
+
+  recordStockMovement(menuItemId: string, delta: number, reason: StockReason, note?: string) {
+    return request<StockChange>('/inventory/movements', {
+      method: 'POST',
+      body: JSON.stringify({ menu_item_id: menuItemId, delta, reason, note }),
+    });
+  },
+
+  countStock(menuItemId: string, counted: number, note?: string) {
+    return request<StockChange>('/inventory/count', {
+      method: 'POST',
+      body: JSON.stringify({ menu_item_id: menuItemId, counted, note }),
+    });
+  },
+
+  setStockTracking(menuItemId: string, trackStock: boolean) {
+    return request<StockChange>('/inventory/tracking', {
+      method: 'PATCH',
+      body: JSON.stringify({ menu_item_id: menuItemId, track_stock: trackStock }),
+    });
+  },
+
+  recomputeStock() {
+    return request<{ ok: boolean; rows_corrected: number }>('/inventory/recompute', {
+      method: 'POST',
+    });
+  },
 };
+
+export interface StockChange {
+  ok: boolean;
+  menu_item_id: string;
+  stock_quantity: number;
+  movement: StockMovement | null;
+  reason: string | null;
+}
 
 /** Friendlier wording for the reasons the backend refuses a send. */
 export function explainSendFailure(reason: string | null): string {

@@ -295,6 +295,17 @@ async def update_order_status(
     if order is None:
         raise HTTPException(status_code=500, detail="status update failed")
 
+    # Stock follows the order, not the other way round: confirming an order is
+    # what sells it, cancelling is what puts it back. Both are idempotent, so a
+    # status flipped back and forth cannot sell or invent stock twice. Untracked
+    # products are skipped, so this is a no-op until staff turn tracking on.
+    stock_changed: list[str] = []
+    if existing.get("status") != payload.status:
+        if payload.status == "confirmed":
+            stock_changed = await db.inventory.sell_order(order, created_by=staff.label)
+        elif payload.status == "cancelled":
+            stock_changed = await db.inventory.restock_order(order, created_by=staff.label)
+
     notified = False
     reason: str | None = None
     if payload.notify and existing.get("status") != payload.status:
@@ -315,7 +326,7 @@ async def update_order_status(
     log.info(
         "order status updated",
         extra={"order_id": order_id, "status": payload.status, "staff": staff.label,
-               "notified": notified, "reason": reason},
+               "notified": notified, "reason": reason, "stock_changed": len(stock_changed)},
     )
     return schemas.OrderStatusResponse(order=order, notified=notified, notify_reason=reason)
 
@@ -358,3 +369,120 @@ async def usage(staff: Principal = Depends(require_staff)) -> schemas.UsageRespo
         inbound_messages=received,
         free_service_messages_remaining=max(0, 1000 - sent),
     )
+
+
+# ---------------------------------------------------------------------------
+# Inventory — stock as a ledger, so a wrong number can always be explained
+# ---------------------------------------------------------------------------
+@app.get("/inventory", response_model=schemas.StockLevelsResponse)
+async def stock_levels(
+    tracked_only: bool = False, staff: Principal = Depends(require_staff)
+) -> schemas.StockLevelsResponse:
+    items = await db.inventory.levels(BUSINESS_ID, tracked_only=tracked_only)
+    return schemas.StockLevelsResponse(items=items)
+
+
+@app.get("/inventory/movements", response_model=schemas.StockMovementsResponse)
+async def stock_movements(
+    menu_item_id: str | None = None,
+    limit: int = 50,
+    staff: Principal = Depends(require_staff),
+) -> schemas.StockMovementsResponse:
+    """The ledger behind the numbers, newest first."""
+    movements = await db.inventory.movements(
+        BUSINESS_ID, menu_item_id=menu_item_id, limit=min(limit, 200)
+    )
+    return schemas.StockMovementsResponse(movements=movements)
+
+
+@app.post("/inventory/movements", response_model=schemas.StockChangeResponse)
+async def record_stock_movement(
+    payload: schemas.StockMovementRequest,
+    staff: Principal = Depends(require_staff),
+) -> schemas.StockChangeResponse:
+    """Record a delivery, a breakage, a correction."""
+    movement = await db.inventory.record(
+        business_id=BUSINESS_ID,
+        menu_item_id=payload.menu_item_id,
+        delta=payload.delta,
+        reason=payload.reason,
+        note=payload.note,
+        created_by=staff.label,
+    )
+    quantity = await db.inventory.quantity(BUSINESS_ID, payload.menu_item_id)
+    log.info(
+        "stock movement recorded",
+        extra={"staff": staff.label, "menu_item_id": payload.menu_item_id,
+               "delta": payload.delta, "reason": payload.reason, "on_hand": quantity},
+    )
+    return schemas.StockChangeResponse(
+        ok=movement is not None,
+        menu_item_id=payload.menu_item_id,
+        stock_quantity=quantity,
+        movement=movement,
+    )
+
+
+@app.post("/inventory/count", response_model=schemas.StockChangeResponse)
+async def record_stock_count(
+    payload: schemas.StockCountRequest,
+    staff: Principal = Depends(require_staff),
+) -> schemas.StockChangeResponse:
+    """A stocktake. Stored as the difference, so the ledger keeps its history."""
+    movement = await db.inventory.set_count(
+        business_id=BUSINESS_ID,
+        menu_item_id=payload.menu_item_id,
+        counted=payload.counted,
+        created_by=staff.label,
+        note=payload.note,
+    )
+    quantity = await db.inventory.quantity(BUSINESS_ID, payload.menu_item_id)
+    return schemas.StockChangeResponse(
+        ok=True,
+        menu_item_id=payload.menu_item_id,
+        stock_quantity=quantity,
+        movement=movement,
+        # A count that matches records nothing, and staff should see that
+        # rather than wonder why the ledger did not grow.
+        reason=None if movement else "already_correct",
+    )
+
+
+@app.patch("/inventory/tracking", response_model=schemas.StockChangeResponse)
+async def set_stock_tracking(
+    payload: schemas.StockTrackingRequest,
+    staff: Principal = Depends(require_staff),
+) -> schemas.StockChangeResponse:
+    """Turn stock tracking on or off for one SKU.
+
+    Off means unlimited, which is how every product behaved before stock
+    existed. Turn it on only after the first count, or the agent will believe
+    there are zero of something the shelf is full of.
+    """
+    item = await db.inventory.set_tracking(
+        BUSINESS_ID, payload.menu_item_id, payload.track_stock
+    )
+    if item is None:
+        raise HTTPException(status_code=404, detail="menu item not found")
+    log.info(
+        "stock tracking changed",
+        extra={"staff": staff.label, "menu_item_id": payload.menu_item_id,
+               "track_stock": payload.track_stock},
+    )
+    return schemas.StockChangeResponse(
+        ok=True,
+        menu_item_id=payload.menu_item_id,
+        stock_quantity=int(item.get("stock_quantity") or 0),
+    )
+
+
+@app.post("/inventory/recompute")
+async def recompute_stock(staff: Principal = Depends(require_staff)) -> dict[str, Any]:
+    """Rebuild every cached quantity from the ledger.
+
+    The whole point of keeping movements is that the number can be re-derived.
+    Run this when the shelf and the screen disagree.
+    """
+    corrected = await db.inventory.recompute(BUSINESS_ID)
+    log.info("stock recomputed", extra={"staff": staff.label, "corrected": corrected})
+    return {"ok": True, "rows_corrected": corrected}

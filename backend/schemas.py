@@ -69,3 +69,48 @@ class HealthResponse(BaseModel):
     database: str
     whatsapp_configured: bool
     warnings: list[str] = Field(default_factory=list)
+
+
+# --- inventory -------------------------------------------------------------
+
+class StockMovementRequest(BaseModel):
+    """One change to stock, recorded as a movement.
+
+    'sold' is absent deliberately: a sale comes from confirming an order, never
+    from someone typing it, or the ledger stops reconciling against orders.
+    """
+
+    menu_item_id: str
+    reason: Literal["received", "returned", "damaged", "expired", "adjusted"]
+    # Signed: +24 for a delivery, -3 for breakages. Zero changes nothing.
+    delta: int = Field(..., ne=0)
+    note: str | None = None
+
+
+class StockCountRequest(BaseModel):
+    """A stocktake: what is physically on the shelf right now."""
+
+    menu_item_id: str
+    counted: int = Field(..., ge=0)
+    note: str | None = None
+
+
+class StockTrackingRequest(BaseModel):
+    menu_item_id: str
+    track_stock: bool
+
+
+class StockLevelsResponse(BaseModel):
+    items: list[dict[str, Any]]
+
+
+class StockMovementsResponse(BaseModel):
+    movements: list[dict[str, Any]]
+
+
+class StockChangeResponse(BaseModel):
+    ok: bool
+    menu_item_id: str
+    stock_quantity: int
+    movement: dict[str, Any] | None = None
+    reason: str | None = None

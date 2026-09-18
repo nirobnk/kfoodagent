@@ -127,3 +127,36 @@ export interface ProductGroup {
   product_url: string | null;
   variants: Product[];
 }
+
+export type StockReason =
+  | 'received'
+  | 'sold'
+  | 'returned'
+  | 'damaged'
+  | 'expired'
+  | 'adjusted'
+  | 'count';
+
+/** One SKU's current position. track_stock off means unlimited, as before. */
+export interface StockItem {
+  id: string;
+  sku: string | null;
+  product_name: string | null;
+  variant_label: string | null;
+  category: string | null;
+  track_stock: boolean;
+  stock_quantity: number;
+  available: boolean;
+}
+
+/** One line of the ledger — why the number is what it is. */
+export interface StockMovement {
+  id: string;
+  menu_item_id: string;
+  delta: number;
+  reason: StockReason;
+  order_id: string | null;
+  note: string | null;
+  created_by: string;
+  created_at: string;
+}
