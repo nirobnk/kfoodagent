@@ -438,3 +438,13 @@ def test_the_prompt_asks_for_one_product_per_line_with_a_price():
 
     assert "one product per line" in prompt
     assert "never drop the price" in prompt
+
+
+def test_the_prompt_lets_the_agent_give_out_published_bank_details():
+    """A customer asked for bank details twice, was told staff would send them,
+    and the chat was escalated — while store_info already returned the account
+    number that is printed on the shop's own checkout page."""
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "GIVE them the bank, branch, account name and account number" in prompt
+    assert "Do not escalate merely because someone asks for bank details" in prompt
