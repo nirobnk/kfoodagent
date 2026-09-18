@@ -464,7 +464,7 @@ async def test_create_order_refuses_to_sell_more_than_is_in_stock(tool_env):
     )
 
     assert "Not enough stock" in result
-    assert "asked for 10, 3 in stock" in result
+    assert "asked for 10, 3 singles in stock" in result
     assert fake.rows("orders") == []
 
 
@@ -498,9 +498,21 @@ async def test_an_untracked_product_has_no_stock_limit(tool_env):
 
 
 def test_search_menu_says_nothing_about_stock_it_does_not_track():
-    from agent.tools.menu import stock_note
+    from agent.tools.menu import stock_line
 
-    assert stock_note({"track_stock": False, "stock_quantity": 0}) == ""
-    assert "OUT OF STOCK" in stock_note({"track_stock": True, "stock_quantity": 0})
-    assert "only 2 left" in stock_note({"track_stock": True, "stock_quantity": 2})
-    assert stock_note({"track_stock": True, "stock_quantity": 99}) == ""
+    assert stock_line({"track_stock": False, "stock_quantity": 0}) == ""
+    assert "OUT OF STOCK" in stock_line({"track_stock": True, "stock_quantity": 0})
+    assert "only 2 singles left" in stock_line({"track_stock": True, "stock_quantity": 2})
+    assert "99 singles in stock" in stock_line({"track_stock": True, "stock_quantity": 99})
+
+
+def test_a_pack_that_cannot_be_made_is_flagged_beside_its_price():
+    """Seven singles cannot become a carton of twenty."""
+    from agent.tools.menu import variant_note
+
+    product = {"track_stock": True, "stock_quantity": 7}
+    assert variant_note({"units": 1}, product) == ""
+    assert variant_note({"units": 5}, product) == ""
+    assert "cannot be made" in variant_note({"units": 20}, product)
+    # Nothing is claimed about a product nobody counts.
+    assert variant_note({"units": 20}, {"track_stock": False}) == ""

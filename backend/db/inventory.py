@@ -5,6 +5,12 @@ hand is the sum of those movements, cached on `menu_items.stock_quantity` by a
 database trigger, so a wrong number can always be explained by reading the
 movements that produced it and repaired with `recompute`.
 
+Stock is counted in SINGLE UNITS, once per product, and held on that product's
+single-unit row. A 5 Pack and a carton of 20 are not separate things on a
+shelf: staff make them up from singles when a customer orders one, so selling
+a 5 Pack takes five singles and a carton takes twenty. Entering 100 means one
+hundred single units of that product, whatever pack a customer buys it in.
+
 Nothing here decides policy: whether a product is tracked at all is
 `menu_items.track_stock`, and an untracked product behaves exactly as it did
 before stock existed — unlimited.
@@ -30,7 +36,46 @@ REASONS = ("received", "sold", "returned", "damaged", "expired", "adjusted", "co
 STAFF_REASONS = ("received", "returned", "damaged", "expired", "adjusted", "count")
 
 MOVEMENT_FIELDS = "id,menu_item_id,delta,reason,order_id,note,created_by,created_at"
-STOCK_FIELDS = "id,sku,product_name,variant_label,category,track_stock,stock_quantity,available"
+STOCK_FIELDS = (
+    "id,sku,handle,units,product_name,variant_label,category,"
+    "track_stock,stock_quantity,available"
+)
+
+
+async def single_row(business_id: str, menu_item_id: str) -> dict[str, Any] | None:
+    """The row that holds a product's stock: its single-unit variant.
+
+    Given any variant — a 5 Pack, a carton — this returns the single of the
+    same product, because stock is counted in singles and only there. Every
+    product in the catalogue has one.
+    """
+    db = await get_db()
+    res = (
+        await db.table("menu_items")
+        .select("id,handle,units,track_stock,stock_quantity,sku,product_name,variant_label")
+        .eq("business_id", business_id)
+        .eq("id", menu_item_id)
+        .limit(1)
+        .execute()
+    )
+    row = first(res)
+    if row is None:
+        return None
+    if int(row.get("units") or 1) == 1:
+        return row
+
+    res = (
+        await db.table("menu_items")
+        .select("id,handle,units,track_stock,stock_quantity,sku,product_name,variant_label")
+        .eq("business_id", business_id)
+        .eq("handle", row.get("handle"))
+        .eq("units", 1)
+        .limit(1)
+        .execute()
+    )
+    # Falling back to the variant itself keeps a malformed catalogue working
+    # rather than silently losing the movement.
+    return first(res) or row
 
 
 async def record(
@@ -48,6 +93,12 @@ async def record(
         raise ValueError(f"unknown inventory reason: {reason}")
     if delta == 0:
         raise ValueError("a movement of zero changes nothing; it is a note, not a movement")
+
+    # Stock lives on the single. A movement aimed at a 5 Pack is really about
+    # the singles that make it up.
+    single = await single_row(business_id, menu_item_id)
+    if single is not None:
+        menu_item_id = str(single["id"])
 
     db = await get_db()
     res = (
@@ -102,17 +153,9 @@ async def set_count(
 
 
 async def quantity(business_id: str, menu_item_id: str) -> int:
-    db = await get_db()
-    res = (
-        await db.table("menu_items")
-        .select("stock_quantity")
-        .eq("business_id", business_id)
-        .eq("id", menu_item_id)
-        .limit(1)
-        .execute()
-    )
-    row = first(res)
-    return int((row or {}).get("stock_quantity") or 0)
+    """Singles on hand for this product, whichever variant is named."""
+    single = await single_row(business_id, menu_item_id)
+    return int((single or {}).get("stock_quantity") or 0)
 
 
 async def levels(
@@ -120,7 +163,13 @@ async def levels(
 ) -> list[dict[str, Any]]:
     """Current stock for the catalogue, one row per SKU."""
     db = await get_db()
-    query = db.table("menu_items").select(STOCK_FIELDS).eq("business_id", business_id)
+    query = (
+        db.table("menu_items")
+        .select(STOCK_FIELDS)
+        .eq("business_id", business_id)
+        # One row per product. The 5 Pack and the carton are made from these.
+        .eq("units", 1)
+    )
     if tracked_only:
         query = query.eq("track_stock", True)
     res = await query.order("sort_order").limit(limit).execute()
@@ -142,25 +191,33 @@ async def movements(
 async def set_tracking(
     business_id: str, menu_item_id: str, tracked: bool
 ) -> dict[str, Any] | None:
-    """Turn stock tracking on or off for one SKU."""
+    """Turn stock tracking on or off for a product.
+
+    The flag lives on the single with the count, so naming any variant turns it
+    on for the product as a whole.
+    """
+    single = await single_row(business_id, menu_item_id)
+    target = str((single or {}).get("id") or menu_item_id)
     db = await get_db()
     res = (
         await db.table("menu_items")
         .update({"track_stock": tracked})
         .eq("business_id", business_id)
-        .eq("id", menu_item_id)
+        .eq("id", target)
         .execute()
     )
     return first(res)
 
 
 async def sell_order(order: dict[str, Any], *, created_by: str = "system") -> list[str]:
-    """Take a confirmed order's items out of stock.
+    """Take a confirmed order's items out of stock, counted in singles.
 
-    Safe to call more than once: a unique index allows one 'sold' movement per
-    item per order, so an order that goes confirmed -> preparing -> confirmed
-    does not sell the same stock twice. Only tracked items move; the rest are
-    ignored exactly as they were before stock existed.
+    A line for two 5 Packs removes ten singles, because that is what staff take
+    off the shelf to make them up. Safe to call more than once: a unique index
+    allows one 'sold' movement per item per order, so an order that goes
+    confirmed -> preparing -> confirmed does not sell the same stock twice.
+    Only tracked products move; the rest are ignored exactly as they were
+    before stock existed.
 
     Returns the SKUs that were decremented.
     """
@@ -175,22 +232,29 @@ async def sell_order(order: dict[str, Any], *, created_by: str = "system") -> li
         if not isinstance(item, dict):
             continue
         menu_item_id = item.get("menu_item_id")
-        quantity_sold = int(item.get("quantity") or 0)
-        if not menu_item_id or quantity_sold <= 0:
+        packs_sold = int(item.get("quantity") or 0)
+        if not menu_item_id or packs_sold <= 0:
             continue
 
-        tracked = await _is_tracked(business_id, menu_item_id)
-        if not tracked:
+        single = await single_row(business_id, menu_item_id)
+        if single is None or not single.get("track_stock"):
             continue
+
+        # How many singles this line actually removes from the shelf.
+        per_pack = await units_in(business_id, menu_item_id)
+        singles_sold = packs_sold * per_pack
+        note = f"order #{order.get('order_number')}"
+        if per_pack > 1:
+            note += f" — {packs_sold} x {per_pack}"
 
         try:
             await record(
                 business_id=business_id,
-                menu_item_id=menu_item_id,
-                delta=-quantity_sold,
+                menu_item_id=str(single["id"]),
+                delta=-singles_sold,
                 reason="sold",
                 order_id=order_id,
-                note=f"order #{order.get('order_number')}",
+                note=note,
                 created_by=created_by,
             )
             sold.append(str(item.get("sku") or menu_item_id))
@@ -251,18 +315,19 @@ async def restock_order(order: dict[str, Any], *, created_by: str = "system") ->
     return restored
 
 
-async def _is_tracked(business_id: str, menu_item_id: str) -> bool:
+async def units_in(business_id: str, menu_item_id: str) -> int:
+    """How many singles one of this variant contains: 1, 5 or 20."""
     db = await get_db()
     res = (
         await db.table("menu_items")
-        .select("track_stock")
+        .select("units")
         .eq("business_id", business_id)
         .eq("id", menu_item_id)
         .limit(1)
         .execute()
     )
     row = first(res)
-    return bool((row or {}).get("track_stock"))
+    return max(1, int((row or {}).get("units") or 1))
 
 
 async def recompute(business_id: str) -> int:

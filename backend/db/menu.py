@@ -102,6 +102,11 @@ def group_by_product(variants: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     for product in products.values():
         product["variants"].sort(key=lambda v: v["price"])
+        # Stock is counted in singles and held on the single-unit variant, so
+        # the product carries one figure and each pack is judged against it.
+        single = next((v for v in product["variants"] if int(v.get("units") or 1) == 1), None)
+        product["track_stock"] = bool((single or {}).get("track_stock"))
+        product["stock_quantity"] = int((single or {}).get("stock_quantity") or 0)
     return list(products.values())
 
 

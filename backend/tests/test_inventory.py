@@ -101,6 +101,10 @@ def an_order(item, quantity=2, order_id="order-1"):
     }
 
 
+def pack_of(fake, sku):
+    return next(r for r in fake.rows("menu_items") if r["sku"] == sku)
+
+
 async def test_confirming_an_order_takes_the_stock(stock):
     _, item = stock
     await db.inventory.record(
@@ -171,3 +175,78 @@ async def test_cancelling_an_order_that_never_sold_anything_is_harmless(stock):
 
     assert await db.inventory.restock_order(an_order(item)) == []
     assert await db.inventory.quantity(BUSINESS_ID, item["id"]) == 0
+
+
+# --- pack sizes -----------------------------------------------------------
+
+async def test_a_five_pack_sale_takes_five_singles(stock):
+    """Staff make a 5 Pack up from singles, so that is what leaves the shelf."""
+    fake, single = stock
+    await db.inventory.record(
+        business_id=BUSINESS_ID, menu_item_id=single["id"], delta=12, reason="received"
+    )
+    five = pack_of(fake, "RAM-SHIN-5")
+
+    await db.inventory.sell_order(an_order(five, quantity=2))
+
+    assert await db.inventory.quantity(BUSINESS_ID, single["id"]) == 2
+
+
+async def test_a_carton_sale_takes_twenty_singles(stock):
+    fake, single = stock
+    await db.inventory.record(
+        business_id=BUSINESS_ID, menu_item_id=single["id"], delta=25, reason="received"
+    )
+    carton = pack_of(fake, "RAM-SHIN-20")
+
+    await db.inventory.sell_order(an_order(carton, quantity=1))
+
+    assert await db.inventory.quantity(BUSINESS_ID, single["id"]) == 5
+
+
+async def test_stock_recorded_against_a_pack_lands_on_the_single(stock):
+    """Whichever variant staff name, the count belongs to the product."""
+    fake, single = stock
+    five = pack_of(fake, "RAM-SHIN-5")
+
+    await db.inventory.record(
+        business_id=BUSINESS_ID, menu_item_id=five["id"], delta=30, reason="received"
+    )
+
+    assert single["stock_quantity"] == 30
+    assert int(five.get("stock_quantity") or 0) == 0
+
+
+async def test_tracking_set_on_a_pack_applies_to_the_product(stock):
+    fake, single = stock
+    single["track_stock"] = False
+    five = pack_of(fake, "RAM-SHIN-5")
+
+    await db.inventory.set_tracking(BUSINESS_ID, five["id"], True)
+
+    assert single["track_stock"] is True
+
+
+async def test_levels_lists_one_row_per_product_not_per_pack(stock):
+    fake, _ = stock
+
+    listed = await db.inventory.levels(BUSINESS_ID)
+
+    assert listed, "expected the catalogue"
+    assert all(int(row.get("units") or 1) == 1 for row in listed)
+    assert len(listed) == len({r["handle"] for r in fake.rows("menu_items")})
+
+
+async def test_cancelling_a_five_pack_order_returns_five_singles(stock):
+    fake, single = stock
+    await db.inventory.record(
+        business_id=BUSINESS_ID, menu_item_id=single["id"], delta=10, reason="received"
+    )
+    five = pack_of(fake, "RAM-SHIN-5")
+    order = an_order(five, quantity=1)
+    await db.inventory.sell_order(order)
+    assert await db.inventory.quantity(BUSINESS_ID, single["id"]) == 5
+
+    await db.inventory.restock_order(order)
+
+    assert await db.inventory.quantity(BUSINESS_ID, single["id"]) == 10

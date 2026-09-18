@@ -32,21 +32,35 @@ def money(value: Any) -> str:
         return f"Rs. {value}"
 
 
-def stock_note(variant: dict[str, Any]) -> str:
-    """What the agent is allowed to say about availability, if anything.
+def variant_note(variant: dict[str, Any], product: dict[str, Any]) -> str:
+    """Whether this pack can be made from the singles on the shelf.
 
-    An untracked variant says nothing at all, because "in stock" would be a
-    claim nobody has checked. Only a variant someone is actually counting can
-    be reported as out or running low.
+    Stock is counted in singles, so a 5 Pack needs five of them. A pack that
+    cannot be made is called out beside its own price, where the agent reads it.
     """
-    if not variant.get("track_stock"):
+    if not product.get("track_stock"):
         return ""
-    on_hand = int(variant.get("stock_quantity") or 0)
-    if on_hand <= 0:
-        return " OUT OF STOCK — do not sell this, offer an alternative"
-    if on_hand <= LOW_STOCK:
-        return f" only {on_hand} left"
+    on_hand = int(product.get("stock_quantity") or 0)
+    per_pack = max(1, int(variant.get("units") or 1))
+    if on_hand < per_pack:
+        return " — cannot be made, not enough stock"
     return ""
+
+
+def stock_line(product: dict[str, Any]) -> str:
+    """One line per product saying what is actually on the shelf.
+
+    An untracked product says nothing at all, because "in stock" would be a
+    claim nobody has checked.
+    """
+    if not product.get("track_stock"):
+        return ""
+    on_hand = int(product.get("stock_quantity") or 0)
+    if on_hand <= 0:
+        return "  OUT OF STOCK — do not sell this, offer an alternative"
+    if on_hand <= LOW_STOCK:
+        return f"  only {on_hand} singles left — say so before they order"
+    return f"  {on_hand} singles in stock"
 
 
 def format_product(product: dict[str, Any], *, with_description: bool = True) -> str:
@@ -65,10 +79,14 @@ def format_product(product: dict[str, Any], *, with_description: bool = True) ->
     line = head + " · " + " · ".join(str(f) for f in facts if f)
 
     variants = " · ".join(
-        f"{v['label']} {money(v['price'])} [{v['sku']}]{stock_note(v)}"
+        f"{v['label']} {money(v['price'])} [{v['sku']}]{variant_note(v, product)}"
         for v in product.get("variants", [])
     )
     lines = [line, f"  {variants}"]
+
+    stock = stock_line(product)
+    if stock:
+        lines.append(stock)
 
     if with_description and product.get("description"):
         lines.append(f"  {product['description']}")

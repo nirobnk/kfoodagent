@@ -11,9 +11,12 @@
 -- it. menu_items.stock_quantity is a cache of that sum, maintained by trigger
 -- and rebuildable from the ledger at any time.
 --
--- Stock is per SKU, meaning per variant row: a 5 Pack is its own sellable
--- thing with its own count, not five singles. Breaking a carton down into
--- singles is two movements, out of one SKU and into another.
+-- Stock is counted in SINGLE UNITS, once per product, and held on that
+-- product's single-unit row (units = 1). A 5 Pack and a carton of 20 are not
+-- separate things on a shelf: staff make them up from singles when a customer
+-- orders one, so selling a 5 Pack records -5 and a carton records -20 against
+-- the same single. The pack rows keep their own prices and SKUs and carry no
+-- stock of their own.
 
 -- --------------------------------------------------------------------------
 -- The cache, on the catalogue

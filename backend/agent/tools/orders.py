@@ -66,14 +66,23 @@ async def create_order(
             continue
 
         # The prompt can ask the agent not to sell what is gone; only this can
-        # stop it. An untracked item is unlimited, as it was before stock.
-        if item.get("track_stock"):
-            on_hand = int(item.get("stock_quantity") or 0)
-            if on_hand < line.quantity:
+        # stop it. Stock is counted in singles, so two 5 Packs need ten of them.
+        # An untracked product is unlimited, as it was before stock existed.
+        single = await db.inventory.single_row(ctx.business_id, str(item.get("id")))
+        if single is not None and single.get("track_stock"):
+            per_pack = max(1, int(item.get("units") or 1))
+            singles_needed = line.quantity * per_pack
+            on_hand = int(single.get("stock_quantity") or 0)
+            if on_hand < singles_needed:
+                asked = (
+                    f"{line.quantity} x {item.get('variant_label') or 'unit'}"
+                    f" ({singles_needed} singles)"
+                    if per_pack > 1
+                    else f"{line.quantity}"
+                )
                 short.append(
-                    f"{item.get('product_name') or line.sku} "
-                    f"({item.get('variant_label') or 'unit'}): asked for {line.quantity}, "
-                    f"{on_hand} in stock"
+                    f"{item.get('product_name') or line.sku}: asked for {asked}, "
+                    f"{on_hand} singles in stock"
                 )
                 continue
 

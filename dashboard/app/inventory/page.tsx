@@ -8,8 +8,13 @@ import type { StockItem, StockMovement, StockReason } from '@/lib/types';
 /**
  * Stock, as staff work it.
  *
- * The numbers here are the sum of a ledger, not a field someone types over, so
- * every figure can be opened up and explained. Tracking is off per SKU until
+ * Everything here is counted in SINGLE UNITS, one row per product. A 5 Pack
+ * and a carton of 20 are not separate things on a shelf — staff make them up
+ * from singles — so entering 100 means a hundred singles, and selling one
+ * 5 Pack takes five of them away.
+ *
+ * The numbers are the sum of a ledger, not a field someone types over, so every
+ * figure can be opened up and explained. Tracking is off per product until
  * somebody counts it: an untracked product sells without limit exactly as it
  * did before stock existed, and switching it on before the first count would
  * have the agent telling customers we have none of something the shelf is
@@ -141,7 +146,7 @@ export default function InventoryPage() {
               <span className="font-medium text-amber-700">{low.length} running low</span>
             )}
             {tracked.length === 0 && (
-              <span>Nothing is tracked yet — count a product, then switch Track on.</span>
+              <span>Nothing is tracked yet — count the singles on the shelf, then switch Track on.</span>
             )}
           </div>
 
@@ -156,7 +161,7 @@ export default function InventoryPage() {
                 <thead className="sticky top-0 bg-wa-panel text-left text-xs uppercase text-wa-muted">
                   <tr>
                     <th className="px-4 py-2 font-medium">Product</th>
-                    <th className="px-2 py-2 font-medium">On hand</th>
+                    <th className="px-2 py-2 font-medium">Singles on hand</th>
                     <th className="px-2 py-2 font-medium">Track</th>
                     <th className="px-2 py-2 font-medium">Record</th>
                   </tr>
@@ -280,7 +285,7 @@ function StockRow({
         <button onClick={onOpen} className="text-left">
           <div className="font-medium">{name}</div>
           <div className="text-xs text-wa-muted">
-            {item.variant_label} · {item.sku}
+            {item.sku} · counted in singles
           </div>
         </button>
       </td>
@@ -338,7 +343,7 @@ function StockRow({
           <button
             onClick={count}
             disabled={busy || !amount}
-            title="Set the number to what is physically on the shelf"
+            title="Set this to the number of single units physically on the shelf"
             className="rounded border border-black/10 px-2 py-1 text-xs hover:bg-black/5 disabled:opacity-40"
           >
             Counted

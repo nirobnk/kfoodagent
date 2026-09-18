@@ -141,10 +141,14 @@ export type StockReason =
 export interface StockItem {
   id: string;
   sku: string | null;
+  handle: string | null;
+  /** Always 1: stock is held on the product's single-unit row. */
+  units: number;
   product_name: string | null;
   variant_label: string | null;
   category: string | null;
   track_stock: boolean;
+  /** Counted in single units. A 5 Pack sale removes five of these. */
   stock_quantity: number;
   available: boolean;
 }
