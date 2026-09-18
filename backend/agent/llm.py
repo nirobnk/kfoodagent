@@ -26,6 +26,17 @@ PROVIDER_PACKAGES = {
 }
 
 
+def _reasoning(**extra: object) -> dict[str, object]:
+    """Arguments only the reasoning models accept.
+
+    Passing reasoning_effort to a plain chat model like gpt-4o is a 400, so it
+    is omitted entirely unless LLM_REASONING_EFFORT is set.
+    """
+    if settings.llm_reasoning_effort:
+        extra["reasoning_effort"] = settings.llm_reasoning_effort
+    return extra
+
+
 def _missing(provider: str) -> ImportError:
     """The caller raises this `from` the original ImportError."""
     package = PROVIDER_PACKAGES.get(provider, "the provider package")
@@ -62,6 +73,7 @@ def get_llm(provider: str | None = None, model: str | None = None) -> Any:
                 "HTTP-Referer": settings.openrouter_site_url,
                 "X-Title": settings.openrouter_app_name,
             },
+            **_reasoning(),
         )
 
     if provider == "gemini":
@@ -88,8 +100,11 @@ def get_llm(provider: str | None = None, model: str | None = None) -> Any:
             model=model,
             api_key=settings.api_key_for(provider),
             temperature=settings.llm_temperature,
+            # langchain sends this as max_completion_tokens for the models that
+            # require it, such as gpt-5.6-terra.
             max_tokens=settings.llm_max_tokens,
             max_retries=2,
+            **_reasoning(),
         )
 
     if provider == "anthropic":

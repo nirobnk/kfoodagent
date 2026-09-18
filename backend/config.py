@@ -103,6 +103,15 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_temperature: float = 0.2
     llm_max_tool_loops: int = 6
+    # Reasoning models only (gpt-5*, o-series); the older chat models reject the
+    # parameter outright, so it is sent only when set. Valid values vary by
+    # model. Critically, this agent always calls tools, and on gpt-5.6-* over
+    # /v1/chat/completions anything other than "none" is refused with
+    # "Function tools with reasoning_effort are not supported" — which would
+    # fail every single customer message. See the check below.
+    llm_reasoning_effort: Literal[
+        "", "none", "minimal", "low", "medium", "high", "xhigh"
+    ] = ""
     # A WhatsApp reply is a few hundred tokens. Left unset, providers reserve
     # credit against the model's full output ceiling (65k on Gemini Flash),
     # which fails with a 402 on a low balance before a single token is written.
@@ -249,6 +258,12 @@ class Settings(BaseSettings):
                 f"{self.llm_provider} model id. Only OpenRouter uses a "
                 f'"vendor/model" prefix; clear LLM_MODEL to use the default '
                 f"({DEFAULT_MODELS[self.llm_provider]})."
+            )
+        if self.llm_reasoning_effort not in ("", "none"):
+            problems.append(
+                f"LLM_REASONING_EFFORT={self.llm_reasoning_effort!r} with tool calling is "
+                "refused by the gpt-5.6 models on /v1/chat/completions, which fails every "
+                'reply. Use "none" unless you have confirmed this model accepts it.'
             )
         if self.uses_legacy_supabase_keys:
             problems.append(
