@@ -1,37 +1,125 @@
-# Pinned, not ranged, and that is deliberate.
+# LOCKED. Every version here, direct and transitive, is resolved and pinned.
 #
-# This file used to carry loose ranges plus `langchain-core>=0.3,<1.0`. The
-# langchain ecosystem then moved to core 1.x: langgraph 1.x, langchain-openai
-# 1.x and langchain-google-genai 2.1+ all require langchain-core>=1.0. That cap
-# made the requirement set unsatisfiable at any recent version, so pip walked
-# backwards through every combination looking for one old enough — langgraph
-# 1.2.11 down through 1.1.0, langchain-openai 1.6.2 down to 0.2.0 — and gave up
-# after 200,000 rounds with ResolutionTooDeep. The Railway build spent eleven
-# minutes on it before failing.
+# Two failures got us here, both from loose constraints:
 #
-# The local venv had already resolved past that cap and was running
-# langchain-core 1.6.3, so the file had not built this environment in a long
-# time and nobody noticed until a clean machine tried.
+#   1. `langchain-core>=0.3,<1.0` became unsatisfiable once the ecosystem moved
+#      to core 1.x (langgraph 1.x, langchain-openai 1.x and
+#      langchain-google-genai 2.1+ all require core>=1.0). pip does not fail
+#      fast on that — it backtracks looking for a combination old enough, and
+#      the Railway build spent eleven minutes doing so before dying with
+#      ResolutionTooDeep: 200000.
 #
-# These are the exact versions the 226 tests pass against. Pinning them means
-# what deploys is what was tested, and it resolves in about three seconds
-# instead of exploring a combinatorial space. Bump deliberately, run the tests,
-# commit the new pin.
+#   2. Pinning only the direct dependencies was not enough. `langgraph` and
+#      `langgraph-prebuilt` are a matched pair that must move together, and
+#      langgraph 1.0.1 permits prebuilt 1.0.13, which imports a symbol
+#      (langgraph.runtime.ExecutionInfo) that 1.0.1 does not export. Every test
+#      module failed at collection with an ImportError.
+#
+# Neither showed up locally, because the venv here had long since resolved to a
+# working set and nothing re-derived it from this file. A pinned transitive
+# closure is the only thing that makes what deploys equal what was tested.
+#
+# REGENERATING, after changing a version deliberately:
+#
+#     python3.12 -m venv /tmp/lock && /tmp/lock/bin/pip install <your changes>
+#     /tmp/lock/bin/pip freeze --exclude-editable | grep -viE '^(pip|setuptools|wheel)=='
+#
+# Use Python 3.12 — it is what the Dockerfile runs, and resolution is
+# interpreter-dependent. Then run the tests against it before committing.
+#
+# Generated on Python 3.12; every one has a binary wheel, so the image builds
+# without a compiler. Verified by installing requirements-dev.txt into a clean
+# 3.12 venv exactly as CI does: ruff clean, 226 tests passing.
+#
+# Direct dependencies, for reference when bumping:
+#   fastapi uvicorn[standard] httpx pydantic pydantic-settings python-dotenv
+#   supabase langgraph langgraph-prebuilt langchain-core langchain-google-genai
+#   langchain-openai tenacity PyJWT
+#
+# Optional extra provider — add deliberately if LLM_PROVIDER=anthropic:
+#   langchain-anthropic
 
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+certifi==2026.7.22
+cffi==2.1.1
+charset-normalizer==3.5.1
+click==8.5.0
+cryptography==50.0.1
+deprecation==2.1.0
+distro==1.9.0
 fastapi==0.141.1
-uvicorn[standard]==0.53.0
+filetype==1.2.0
+google-ai-generativelanguage==0.12.0
+google-api-core==2.38.0
+google-auth==2.58.0
+googleapis-common-protos==1.75.3
+grpcio==1.84.0
+grpcio-status==1.84.0
+h11==0.16.0
+h2==4.4.1
+hpack==4.2.0
+httpcore==1.0.9
+httpcore2==2.13.0
+httptools==0.8.0
 httpx==0.28.1
-pydantic==2.13.5
-pydantic-settings==2.15.0
-python-dotenv==1.2.3
-supabase==2.31.0
-langgraph==1.0.1
+httpx2==2.13.0
+hyperframe==6.1.0
+idna==3.20
+jiter==0.17.0
+jsonpatch==1.33
+jsonpointer==3.1.1
 langchain-core==1.6.3
 langchain-google-genai==2.1.12
-# OpenRouter speaks the OpenAI API, so this package serves both providers.
 langchain-openai==1.6.2
-tenacity==9.1.4
+langchain-protocol==0.0.19
+langgraph==1.0.1
+langgraph-checkpoint==3.0.1
+langgraph-prebuilt==1.0.1
+langgraph-sdk==0.2.15
+langsmith==0.13.0
+multidict==6.9.0
+openai==3.16.2
+opentelemetry-api==1.44.0
+orjson==3.12.0
+ormsgpack==1.12.2
+packaging==26.3
+postgrest==2.31.0
+propcache==0.5.4
+proto-plus==1.28.4
+protobuf==7.36.2
+pyasn1==0.6.4
+pyasn1_modules==0.4.2
+pycparser==3.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+pydantic_core==2.46.5
 PyJWT==2.14.0
-
-# Optional extra provider — install only if LLM_PROVIDER=anthropic.
-# langchain-anthropic>=0.3
+python-dotenv==1.2.3
+PyYAML==6.0.3
+realtime==2.31.0
+regex==2026.9.10
+requests==2.34.2
+requests-toolbelt==1.0.0
+sniffio==1.3.1
+starlette==1.6.0
+storage3==2.31.0
+StrEnum==0.4.15
+supabase==2.31.0
+supabase-auth==2.31.0
+supabase-functions==2.31.0
+tenacity==9.1.4
+tiktoken==0.14.0
+truststore==0.10.4
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+urllib3==2.8.0
+uuid_utils==0.17.1
+uvicorn==0.53.0
+uvloop==0.22.1
+watchfiles==1.2.0
+websockets==15.0.1
+xxhash==4.0.1
+yarl==1.25.1
+zstandard==0.25.0
