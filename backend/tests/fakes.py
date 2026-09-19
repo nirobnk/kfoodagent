@@ -429,7 +429,7 @@ KFOOD_PROFILE: dict[str, Any] = {
     "categories": ["Instant Noodles", "Cup Noodles", "Beverages"],
     "area_served": "Sri Lanka (all 25 districts)",
     "contact": {
-        "whatsapp": {"number": "94753414084", "displayNumber": "075 341 4084"},
+        "whatsapp": {"number": "94772953107", "displayNumber": "077 295 3107"},
         "email": {"address": "kfoodslk@gmail.com"},
         "social": {"facebook": "https://web.facebook.com/kfoodslk"},
     },
