@@ -64,8 +64,8 @@ backend/           FastAPI app
   tests/           226 tests, no network
 dashboard/         Next.js App Router + Tailwind
 supabase/
-  migrations/      0001_init.sql .. 0006_pos.sql (init, rls, functions,
-                   catalog, inventory, pos)
+  migrations/      0001_init.sql .. 0007_function_grants.sql (init, rls,
+                   functions, catalog, inventory, pos, function grants)
   seed.sql         business row + message templates — run by hand
   seed_catalog.sql GENERATED: 90 product variants, business profile, 9 FAQs
 data/              kfood-catalog.json, kfood-images.json — exported from the kfoods.lk site
