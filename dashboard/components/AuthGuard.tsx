@@ -53,8 +53,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (!allowed) {
     return (
-      <div className="flex h-screen items-center justify-center bg-wa-panel">
-        <p className="text-sm text-wa-muted">Checking your session…</p>
+      <div className="flex h-screen items-center justify-center bg-paper">
+        <p className="font-mono text-2xs uppercase tracking-[0.14em] text-soy">
+          Checking your session
+        </p>
       </div>
     );
   }

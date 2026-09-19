@@ -64,6 +64,7 @@ def db_modules() -> tuple:
         db.client,
         db.business,
         db.contacts,
+        db.crm,
         db.devices,
         db.faqs,
         db.inventory,

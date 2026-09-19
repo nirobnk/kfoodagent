@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase';
-import { Nav } from '@/components/Nav';
+import { Page, PageHeader } from '@/components/AppShell';
+import { Empty, Loading, Problem, Segmented } from '@/components/ui/Bits';
 import { OrderCard } from '@/components/OrderCard';
 import { formatMoney } from '@/lib/format';
 import type { Order, OrderStatus } from '@/lib/types';
@@ -23,7 +24,6 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState<'open' | 'all' | OrderStatus>('open');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
 
   const upsert = useCallback((order: Order) => {
     setOrders((current) => {
@@ -38,8 +38,6 @@ export default function OrdersPage() {
   useEffect(() => {
     const supabase = createClient();
     let alive = true;
-
-    supabase.auth.getUser().then(({ data }) => alive && setEmail(data.user?.email ?? null));
 
     supabase
       .from('orders')
@@ -73,60 +71,41 @@ export default function OrdersPage() {
     return orders.filter((order) => order.status === filter);
   }, [orders, filter]);
 
-  const todayTotal = useMemo(() => {
+  const todayOrders = useMemo(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
-    return orders
-      .filter(
-        (order) => order.status !== 'cancelled' && Date.parse(order.created_at) >= start.getTime(),
-      )
-      .reduce((sum, order) => sum + Number(order.total || 0), 0);
+    return orders.filter(
+      (order) => order.status !== 'cancelled' && Date.parse(order.created_at) >= start.getTime(),
+    );
   }, [orders]);
 
+  const todayTotal = todayOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const todayCount = todayOrders.length;
+
   return (
-    <div className="flex h-screen flex-col">
-      <Nav email={email} />
+    <Page>
+      <PageHeader
+        title="Orders"
+        lede={`${formatMoney(todayTotal)} taken today across ${todayCount} order${
+          todayCount === 1 ? '' : 's'
+        }.`}
+      >
+        <Segmented value={filter} onChange={setFilter} options={FILTERS} />
+      </PageHeader>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <h1 className="text-lg font-semibold">Orders</h1>
-            <span className="rounded-full bg-white px-3 py-1 text-sm ring-1 ring-wa-border">
-              Today: {formatMoney(todayTotal)}
-            </span>
+      {loading && <Loading what="orders" />}
+      {error && <Problem>{error}</Problem>}
+      {!loading && visible.length === 0 && (
+        <Empty title="Nothing here">
+          Orders appear the moment the agent creates one, or the counter sends a bill.
+        </Empty>
+      )}
 
-            <div className="ml-auto flex flex-wrap gap-1">
-              {FILTERS.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setFilter(option.value)}
-                  className={`rounded-full px-3 py-1.5 text-sm transition ${
-                    filter === option.value
-                      ? 'bg-wa-green text-white'
-                      : 'bg-white ring-1 ring-wa-border hover:bg-wa-panel'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {loading && <p className="text-sm text-wa-muted">Loading orders…</p>}
-          {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {!loading && visible.length === 0 && (
-            <p className="rounded-xl bg-white p-6 text-center text-sm text-wa-muted ring-1 ring-wa-border">
-              Nothing here. Orders appear as soon as the agent creates one.
-            </p>
-          )}
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {visible.map((order) => (
-              <OrderCard key={order.id} order={order} onUpdated={upsert} />
-            ))}
-          </div>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {visible.map((order) => (
+          <OrderCard key={order.id} order={order} onUpdated={upsert} />
+        ))}
       </div>
-    </div>
+    </Page>
   );
 }

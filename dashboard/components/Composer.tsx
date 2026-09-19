@@ -46,15 +46,15 @@ export function Composer({
 
   if (!windowOpen) {
     return (
-      <div className="border-t border-wa-border bg-wa-panel">
+      <div className="border-t border-line bg-paper">
         <TemplatePicker contactId={contact.id} onSent={onSent} />
       </div>
     );
   }
 
   return (
-    <div className="border-t border-wa-border bg-wa-panel p-3">
-      {error && <p className="mb-2 text-xs text-red-600">{error}</p>}
+    <div className="border-t border-line bg-paper p-3">
+      {error && <p className="mb-2 text-xs text-chilli">{error}</p>}
       <div className="flex items-end gap-2">
         <textarea
           rows={1}
@@ -67,18 +67,18 @@ export function Composer({
             }
           }}
           placeholder="Type a message. Enter to send, Shift+Enter for a new line."
-          className="max-h-32 min-h-[42px] flex-1 resize-y rounded-2xl border border-wa-border bg-white px-4 py-2.5 text-sm outline-none focus:border-wa-green"
+          className="max-h-32 min-h-[42px] flex-1 resize-y rounded-2xl border border-line bg-card px-4 py-2.5 text-sm outline-none focus:border-ink"
         />
         <button
           onClick={send}
           disabled={busy || !body.trim()}
-          className="h-[42px] rounded-full bg-wa-green px-5 text-sm font-medium text-white transition hover:bg-[#0f7a6e] disabled:opacity-50"
+          className="h-[42px] rounded-full bg-ink px-5 text-sm font-medium text-white transition hover:bg-ink-raised disabled:opacity-50"
         >
           {busy ? '…' : 'Send'}
         </button>
       </div>
       {!contact.human_takeover && (
-        <p className="mt-2 text-[11px] text-wa-muted">
+        <p className="mt-2 text-2xs text-soy">
           Sending switches this chat to you, so the agent stops replying.
         </p>
       )}

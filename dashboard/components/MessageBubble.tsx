@@ -17,14 +17,14 @@ export function MessageBubble({ message }: { message: Message }) {
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[78%] rounded-lg px-3 py-2 text-sm shadow-sm ${
-          mine ? 'bg-wa-mine' : 'bg-wa-bubble'
-        } ${message.status === 'failed' ? 'ring-1 ring-red-300' : ''}`}
+        className={`max-w-[78%] rounded-lg px-3 py-2 text-sm shadow-card ${
+          mine ? 'bg-scallion-wash' : 'bg-card'
+        } ${message.status === 'failed' ? 'ring-1 ring-chilli/40' : ''}`}
       >
         {mine && (
-          <div className="mb-0.5 text-[11px] font-medium text-wa-muted">
-            {fromAgent ? '🤖 Agent' : fromSystem ? '🔔 Automatic' : '🧑 Staff'}
-            {message.template_name && ` · template: ${message.template_name}`}
+          <div className="eyebrow mb-1">
+            {fromAgent ? 'Agent' : fromSystem ? 'Automatic' : 'Staff'}
+            {message.template_name && ` · ${message.template_name}`}
           </div>
         )}
 
@@ -45,15 +45,15 @@ export function MessageBubble({ message }: { message: Message }) {
         )}
 
         <p className="whitespace-pre-wrap break-words">
-          {message.body || <span className="italic text-wa-muted">[{message.message_type}]</span>}
+          {message.body || <span className="italic text-soy">[{message.message_type}]</span>}
         </p>
 
-        <div className="mt-1 flex items-center justify-end gap-1 text-[11px] text-wa-muted">
+        <div className="mt-1 flex items-center justify-end gap-1 font-mono text-2xs text-soy tnum">
           <span>{formatTime(message.created_at)}</span>
           {mine && <span title={message.status}>{TICKS[message.status] ?? ''}</span>}
         </div>
 
-        {message.error && <p className="mt-1 text-[11px] text-red-600">{message.error}</p>}
+        {message.error && <p className="mt-1 text-2xs text-chilli">{message.error}</p>}
       </div>
     </div>
   );

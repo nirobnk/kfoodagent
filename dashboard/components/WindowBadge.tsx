@@ -27,15 +27,15 @@ export function WindowBadge({ contact }: { contact: Contact }) {
           ? 'Free-form replies are allowed until this runs out'
           : 'The 24-hour window is closed. Only approved templates can be sent.'
       }
-      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+      className={`rounded-lg px-2.5 py-1.5 font-mono text-2xs font-semibold uppercase tracking-[0.06em] tnum ${
         !open
-          ? 'bg-red-100 text-red-700'
+          ? 'bg-chilli-wash text-chilli-dark'
           : low
-            ? 'bg-amber-100 text-amber-800'
-            : 'bg-emerald-100 text-emerald-800'
+            ? 'bg-broth-wash text-broth'
+            : 'bg-scallion-wash text-scallion'
       }`}
     >
-      {open ? `Free reply: ${formatRemaining(remaining)} left` : 'Window closed'}
+      {open ? `${formatRemaining(remaining)} to reply free` : 'Window closed'}
     </span>
   );
 }

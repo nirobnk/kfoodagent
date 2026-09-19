@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase';
 import { api } from '@/lib/api';
@@ -8,6 +9,7 @@ import { Composer } from './Composer';
 import { MessageBubble } from './MessageBubble';
 import { TakeoverToggle } from './TakeoverToggle';
 import { WindowBadge } from './WindowBadge';
+import { Icon } from './ui/Icon';
 import type { Contact, Message } from '@/lib/types';
 
 const PAGE_SIZE = 200;
@@ -122,40 +124,60 @@ export function ChatThread({
 
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col">
-      <header className="flex flex-wrap items-center gap-3 border-b border-wa-border bg-white px-4 py-2.5">
+      <header className="flex flex-wrap items-center gap-3 border-b border-line bg-card px-4 py-2.5">
         {onBack && (
-          <button onClick={onBack} className="text-sm text-wa-muted md:hidden" aria-label="Back">
-            ←
+          <button
+            onClick={onBack}
+            className="rounded-lg p-1 text-soy hover:bg-ink/5 hover:text-ink md:hidden"
+            aria-label="Back to chats"
+          >
+            <Icon name="back" />
           </button>
         )}
         <div className="min-w-0">
-          <h2 className="truncate font-semibold">{contactLabel(contact)}</h2>
-          <p className="truncate text-xs text-wa-muted">
+          <h2 className="truncate font-display text-base font-bold tracking-tightest">
+            {contactLabel(contact)}
+          </h2>
+          <p className="truncate font-mono text-2xs text-soy">
             +{contact.wa_id}
             {contact.takeover_by && contact.human_takeover ? ` · held by ${contact.takeover_by}` : ''}
           </p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {/* The one link that makes this an inbox inside a CRM rather than
+              beside one: who is this, what have they bought, what did we promise. */}
+          <Link
+            href={`/customers?id=${contact.id}`}
+            className="btn-quiet px-2.5 py-1.5 text-xs"
+            title="Open this customer's record"
+          >
+            <Icon name="customers" className="h-4 w-4" />
+            Record
+          </Link>
           <WindowBadge contact={contact} />
           <TakeoverToggle contact={contact} onChange={onContactPatch} />
         </div>
       </header>
 
       <div className="chat-bg scroll-thin flex-1 space-y-2 overflow-y-auto px-4 py-4">
-        {loading && <p className="text-center text-sm text-wa-muted">Loading…</p>}
+        {loading && (
+          <p className="text-center font-mono text-2xs uppercase tracking-[0.14em] text-soy">
+            Loading
+          </p>
+        )}
         {error && (
-          <p className="mx-auto max-w-sm rounded bg-red-50 p-3 text-center text-sm text-red-700">
+          <p className="mx-auto max-w-sm rounded bg-chilli-wash p-3 text-center text-sm text-chilli-dark">
             {error}
           </p>
         )}
         {!loading && messages.length === 0 && (
-          <p className="text-center text-sm text-wa-muted">No messages yet.</p>
+          <p className="text-center text-sm text-soy">No messages yet.</p>
         )}
 
         {grouped.map((group) => (
           <div key={group.day} className="space-y-2">
             <div className="flex justify-center">
-              <span className="rounded-full bg-white/80 px-3 py-1 text-[11px] text-wa-muted shadow-sm">
+              <span className="rounded-full bg-white/80 px-3 py-1 text-2xs text-soy shadow-sm">
                 {group.day}
               </span>
             </div>

@@ -315,3 +315,120 @@ class DeviceCreateResponse(BaseModel):
 
 class DeviceListResponse(BaseModel):
     devices: list[dict[str, Any]] = Field(default_factory=list)
+
+
+# --- CRM (staff-only) -------------------------------------------------------
+
+LIFECYCLE = Literal["lead", "active", "regular", "vip", "at_risk", "lost", "blocked"]
+CONTACT_SOURCE = Literal["whatsapp", "pos", "web", "referral", "walk_in", "other"]
+
+
+class CustomerPatch(BaseModel):
+    """A staff edit to a customer record.
+
+    Every field is optional and only the ones sent are written, so two people
+    editing different halves of the same record do not overwrite each other.
+    `db.crm.EDITABLE_CONTACT_FIELDS` is the second gate: a field that appears
+    here but not there is silently dropped rather than trusted.
+    """
+
+    name: str | None = Field(default=None, max_length=120)
+    email: str | None = Field(default=None, max_length=200)
+    address: str | None = Field(default=None, max_length=500)
+    city: str | None = Field(default=None, max_length=120)
+    birthday: str | None = Field(default=None, description="ISO date, or null to clear")
+    language: Literal["en", "si", "ta"] | None = None
+    lifecycle: LIFECYCLE | None = None
+    owner: str | None = Field(default=None, max_length=120)
+    source: CONTACT_SOURCE | None = None
+    tags: list[str] | None = None
+    marketing_opt_in: bool | None = None
+
+
+class CustomerSummary(BaseModel):
+    """One row of the customer list: the contact, plus what its orders say."""
+
+    contact: dict[str, Any]
+    stats: dict[str, Any]
+    open_tasks: int = 0
+    next_due_at: str | None = None
+
+
+class CustomerListResponse(BaseModel):
+    customers: list[CustomerSummary] = Field(default_factory=list)
+    segments: dict[str, int] = Field(default_factory=dict)
+
+
+class CustomerDetailResponse(BaseModel):
+    contact: dict[str, Any]
+    stats: dict[str, Any]
+    orders: list[dict[str, Any]] = Field(default_factory=list)
+    notes: list[dict[str, Any]] = Field(default_factory=list)
+    tasks: list[dict[str, Any]] = Field(default_factory=list)
+    invoices: list[dict[str, Any]] = Field(default_factory=list)
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+    window_open: bool = False
+    window_remaining_human: str = "closed"
+
+
+class NoteRequest(BaseModel):
+    note: str = Field(min_length=1, max_length=2000)
+    pinned: bool = False
+
+
+class NotePinRequest(BaseModel):
+    pinned: bool
+
+
+class NoteResponse(BaseModel):
+    note: dict[str, Any]
+
+
+class TaskRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    contact_id: str | None = None
+    order_id: str | None = None
+    detail: str | None = Field(default=None, max_length=2000)
+    due_at: str | None = None
+    priority: Literal["low", "normal", "high"] = "normal"
+    assigned_to: str | None = Field(default=None, max_length=120)
+
+
+class TaskPatch(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    detail: str | None = Field(default=None, max_length=2000)
+    due_at: str | None = None
+    priority: Literal["low", "normal", "high"] | None = None
+    assigned_to: str | None = Field(default=None, max_length=120)
+    done: bool | None = None
+
+
+class TaskResponse(BaseModel):
+    task: dict[str, Any]
+
+
+class TaskListResponse(BaseModel):
+    tasks: list[dict[str, Any]] = Field(default_factory=list)
+    open_count: int = 0
+    overdue_count: int = 0
+
+
+class AnalyticsResponse(BaseModel):
+    days: int
+    totals: dict[str, Any]
+    revenue_by_day: list[dict[str, Any]] = Field(default_factory=list)
+    top_products: list[dict[str, Any]] = Field(default_factory=list)
+    status_mix: list[dict[str, Any]] = Field(default_factory=list)
+    source_mix: list[dict[str, Any]] = Field(default_factory=list)
+    acquisition: dict[str, Any] = Field(default_factory=dict)
+    segments: dict[str, int] = Field(default_factory=dict)
+    messages: dict[str, Any] = Field(default_factory=dict)
+
+
+class InvoiceListResponse(BaseModel):
+    invoices: list[dict[str, Any]] = Field(default_factory=list)
+    mismatch_count: int = 0
+
+
+class InvoiceReviewResponse(BaseModel):
+    invoice: dict[str, Any]

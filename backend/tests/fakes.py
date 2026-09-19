@@ -259,6 +259,21 @@ class FakeSupabase:
                 "last_seen_at": None,
                 "created_by": "owner",
             },
+            "crm_tasks": {
+                "contact_id": None,
+                "order_id": None,
+                "detail": None,
+                "due_at": None,
+                "priority": "normal",
+                "done_at": None,
+                "done_by": None,
+                "assigned_to": None,
+                "created_by": "staff",
+            },
+            "notes": {
+                "created_by": "agent",
+                "pinned": False,
+            },
             "order_invoices": {
                 "mismatch": False,
                 "mismatch_detail": [],
@@ -285,6 +300,9 @@ class FakeSupabase:
         if table == "orders":
             self._serial += 1
             row["order_number"] = self._serial
+            row["updated_at"] = _now()
+        if table == "crm_tasks":
+            # 0008 puts the same set_updated_at trigger on this table.
             row["updated_at"] = _now()
         if table in ("contacts",):
             row.setdefault("first_seen", _now())

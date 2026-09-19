@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 import db
 import jobs
 import outbound
+import routes_crm
 import routes_pos
 import routes_public
 import schemas
@@ -104,10 +105,12 @@ app.add_middleware(
     expose_headers=["ETag"],
 )
 
-# Public catalogue for kfoods.lk, and the POS behind its device token. Both are
-# routers rather than routes here, so their auth tier is declared once.
+# Public catalogue for kfoods.lk, the POS behind its device token, and the CRM
+# behind staff auth. Routers rather than routes here, so each one's auth tier is
+# declared once instead of on every path.
 app.include_router(routes_public.public)
 app.include_router(routes_pos.pos)
+app.include_router(routes_crm.crm_api)
 
 
 # ---------------------------------------------------------------------------

@@ -56,7 +56,7 @@ export function TemplatePicker({
 
   if (templates.length === 0) {
     return (
-      <p className="p-3 text-center text-xs text-wa-muted">
+      <p className="p-3 text-center text-xs text-soy">
         The 24-hour window is closed and no approved template is available yet. Submit templates in
         Meta Business Manager, then mark them approved in the templates table.
       </p>
@@ -65,7 +65,7 @@ export function TemplatePicker({
 
   return (
     <div className="space-y-2 p-3">
-      <p className="text-xs text-wa-muted">
+      <p className="text-xs text-soy">
         The free-reply window has closed. Choose an approved template:
       </p>
 
@@ -76,8 +76,8 @@ export function TemplatePicker({
             onClick={() => choose(template)}
             className={`rounded-full border px-3 py-1.5 text-xs transition ${
               selected?.id === template.id
-                ? 'border-wa-green bg-wa-green text-white'
-                : 'border-wa-border bg-white hover:bg-wa-panel'
+                ? 'border-wa-green bg-ink text-white'
+                : 'border-line bg-card hover:bg-paper'
             }`}
           >
             {template.key}
@@ -86,9 +86,9 @@ export function TemplatePicker({
       </div>
 
       {selected && (
-        <div className="space-y-2 rounded-lg border border-wa-border bg-white p-3">
+        <div className="space-y-2 rounded-lg border border-line bg-card p-3">
           {selected.body_preview && (
-            <p className="text-xs italic text-wa-muted">{selected.body_preview}</p>
+            <p className="text-xs italic text-soy">{selected.body_preview}</p>
           )}
           {(selected.variables ?? []).map((name, index) => (
             <input
@@ -100,20 +100,20 @@ export function TemplatePicker({
                 setValues(next);
               }}
               placeholder={`{{${index + 1}}} ${name}`}
-              className="w-full rounded border border-wa-border px-2 py-1.5 text-sm outline-none focus:border-wa-green"
+              className="w-full rounded border border-line px-2 py-1.5 text-sm outline-none focus:border-ink"
             />
           ))}
           <button
             onClick={send}
             disabled={busy || values.some((value) => !value.trim())}
-            className="w-full rounded-lg bg-wa-green py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="w-full rounded-lg bg-ink py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {busy ? 'Sending…' : 'Send template'}
           </button>
         </div>
       )}
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-chilli">{error}</p>}
     </div>
   );
 }

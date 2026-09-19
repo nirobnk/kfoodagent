@@ -31,68 +31,62 @@ function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-sm">
-      <form
-        onSubmit={onSubmit}
-        className="w-full rounded-2xl bg-white p-8 shadow-sm ring-1 ring-wa-border"
-      >
-        <div className="mb-6">
-          <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-wa-green text-lg font-semibold text-white">
-            K
-          </div>
-          <h1 className="text-xl font-semibold">K-Food Inbox</h1>
-          <p className="mt-1 text-sm text-wa-muted">Staff sign in</p>
-        </div>
+    <form onSubmit={onSubmit} className="card w-full max-w-sm animate-rise p-8">
+      <div className="mb-7">
+        <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-chilli font-display text-base font-extrabold text-white">
+          K
+        </span>
+        <h1 className="font-display text-2xl font-extrabold tracking-tight">K&nbsp;FOOD</h1>
+        <p className="mt-0.5 text-sm text-soy">Sign in to the customer book.</p>
+      </div>
 
-        <label className="mb-3 block text-sm">
-          <span className="mb-1 block font-medium">Email</span>
-          <input
-            type="email"
-            required
-            autoComplete="username"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-lg border border-wa-border px-3 py-2 outline-none focus:border-wa-green"
-          />
-        </label>
+      <label className="mb-4 block">
+        <span className="label mb-1.5">Email</span>
+        <input
+          type="email"
+          required
+          autoComplete="username"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          className="field"
+        />
+      </label>
 
-        <label className="mb-5 block text-sm">
-          <span className="mb-1 block font-medium">Password</span>
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-lg border border-wa-border px-3 py-2 outline-none focus:border-wa-green"
-          />
-        </label>
+      <label className="mb-6 block">
+        <span className="label mb-1.5">Password</span>
+        <input
+          type="password"
+          required
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          className="field"
+        />
+      </label>
 
-        {error && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-lg bg-wa-green py-2.5 font-medium text-white transition hover:bg-[#0f7a6e] disabled:opacity-60"
-        >
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-
-        <p className="mt-4 text-center text-xs text-wa-muted">
-          Accounts are created in Supabase and linked to K-Food in business_members.
+      {error && (
+        <p className="mb-4 rounded-lg border border-chilli/25 bg-chilli-wash px-3 py-2 text-sm text-chilli-dark">
+          {error}
         </p>
-      </form>
-    </div>
+      )}
+
+      <button type="submit" disabled={busy} className="btn-hot w-full py-2.5">
+        {busy ? 'Signing in…' : 'Sign in'}
+      </button>
+
+      <p className="mt-5 text-center text-xs leading-relaxed text-soy">
+        Accounts are made in Supabase and linked to K FOOD in business_members. If sign-in works
+        but nothing loads, that link is what is missing.
+      </p>
+    </form>
   );
 }
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-wa-panel px-4">
+    <main className="flex min-h-screen items-center justify-center bg-paper px-4">
       {/* useSearchParams needs a suspense boundary when the page is prerendered. */}
-      <Suspense fallback={<p className="text-sm text-wa-muted">Loading…</p>}>
+      <Suspense fallback={<p className="text-sm text-soy">Loading…</p>}>
         <LoginForm />
       </Suspense>
     </main>

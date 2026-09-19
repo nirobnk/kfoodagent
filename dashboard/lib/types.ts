@@ -164,3 +164,159 @@ export interface StockMovement {
   created_by: string;
   created_at: string;
 }
+
+// ---------------------------------------------------------------------------
+// CRM
+// ---------------------------------------------------------------------------
+export type Lifecycle =
+  | 'lead'
+  | 'active'
+  | 'regular'
+  | 'vip'
+  | 'at_risk'
+  | 'lost'
+  | 'blocked';
+
+export type ContactSource = 'whatsapp' | 'pos' | 'web' | 'referral' | 'walk_in' | 'other';
+
+/** The fields 0008_crm.sql added to contacts — the record staff actually edit. */
+export interface CrmContact extends Contact {
+  lifecycle: Lifecycle;
+  owner: string | null;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  birthday: string | null;
+  marketing_opt_in: boolean;
+  source: ContactSource;
+}
+
+export interface FavouriteItem {
+  name: string;
+  sku: string | null;
+  quantity: number;
+  orders: number;
+}
+
+/** Computed from the orders on every read — never stored. See backend/crm.py. */
+export interface CustomerStats {
+  orders: number;
+  cancelled_orders: number;
+  lifetime_value: number;
+  average_order: number;
+  largest_order: number;
+  items_bought: number;
+  first_order_at: string | null;
+  last_order_at: string | null;
+  days_since_last_order: number | null;
+  days_as_customer: number | null;
+  average_gap_days: number | null;
+  recency_score: number;
+  frequency_score: number;
+  monetary_score: number;
+  suggested_lifecycle: Lifecycle;
+  favourites: FavouriteItem[];
+}
+
+export interface CustomerSummary {
+  contact: CrmContact;
+  stats: CustomerStats;
+  open_tasks: number;
+  next_due_at: string | null;
+}
+
+export interface Note {
+  id: string;
+  business_id: string;
+  contact_id: string;
+  note: string;
+  created_by: string;
+  pinned: boolean;
+  created_at: string;
+}
+
+export type TaskPriority = 'low' | 'normal' | 'high';
+
+export interface Task {
+  id: string;
+  business_id: string;
+  contact_id: string | null;
+  order_id: string | null;
+  title: string;
+  detail: string | null;
+  due_at: string | null;
+  priority: TaskPriority;
+  done_at: string | null;
+  done_by: string | null;
+  assigned_to: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A printed POS bill, and what the server thought it should have said. */
+export interface Invoice {
+  id: string;
+  order_id: string;
+  device_id: string;
+  bill_no: string;
+  printed_at: string;
+  received_at: string;
+  paper_total: number;
+  paper_subtotal: number;
+  paper_discount: number;
+  paper_delivery: number;
+  server_total: number;
+  server_subtotal: number;
+  server_discount: number;
+  server_delivery: number;
+  mismatch: boolean;
+  mismatch_detail: { sku?: string; printed?: number; server?: number; reason?: string }[];
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  payment_method: string | null;
+  lines: OrderItem[];
+  created_by: string;
+}
+
+export interface CustomerDetail {
+  contact: CrmContact;
+  stats: CustomerStats;
+  orders: Order[];
+  notes: Note[];
+  tasks: Task[];
+  invoices: Invoice[];
+  messages: Message[];
+  window_open: boolean;
+  window_remaining_human: string;
+}
+
+export interface Analytics {
+  days: number;
+  totals: {
+    days: number;
+    current: AnalyticsPeriod;
+    previous: AnalyticsPeriod;
+  };
+  revenue_by_day: { day: string; revenue: number; orders: number }[];
+  top_products: { name: string; revenue: number; quantity: number }[];
+  status_mix: { key: string; orders: number; revenue: number }[];
+  source_mix: { key: string; orders: number; revenue: number }[];
+  acquisition: {
+    days: number;
+    new_customers: number;
+    returning_customers: number;
+    new_revenue: number;
+    returning_revenue: number;
+  };
+  segments: Partial<Record<Lifecycle, number>>;
+  messages: { month_start: string; outbound: number; inbound: number };
+}
+
+export interface AnalyticsPeriod {
+  orders: number;
+  revenue: number;
+  average_order: number;
+  customers: number;
+  cancelled: number;
+}

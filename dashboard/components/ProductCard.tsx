@@ -18,8 +18,8 @@ export function ProductCard({ product }: { product: ProductGroup }) {
   const photo = sources[sourceIndex];
 
   return (
-    <article className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-wa-border">
-      <div className="flex aspect-[4/3] items-center justify-center bg-wa-panel">
+    <article className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-line">
+      <div className="flex aspect-[4/3] items-center justify-center bg-paper">
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -31,7 +31,7 @@ export function ProductCard({ product }: { product: ProductGroup }) {
             className="h-full w-full object-contain"
           />
         ) : (
-          <span className="px-4 text-center text-xs text-wa-muted">
+          <span className="px-4 text-center text-xs text-soy">
             {sources.length > 0 ? 'Photo failed to load' : 'Photo coming soon'}
           </span>
         )}
@@ -41,12 +41,12 @@ export function ProductCard({ product }: { product: ProductGroup }) {
         <div className="flex items-start gap-2">
           <div className="min-w-0">
             <h3 className="truncate font-semibold">{product.product_name}</h3>
-            <p className="truncate text-xs text-wa-muted">
+            <p className="truncate text-xs text-soy">
               {[product.brand, product.korean_name, product.pack_size].filter(Boolean).join(' · ')}
             </p>
           </div>
           {product.badge && (
-            <span className="ml-auto shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+            <span className="ml-auto shrink-0 rounded-full bg-scallion-wash px-2 py-0.5 text-2xs font-medium text-scallion">
               {product.badge}
             </span>
           )}
@@ -61,26 +61,26 @@ export function ProductCard({ product }: { product: ProductGroup }) {
         <ul className="mt-3 space-y-1 text-sm">
           {product.variants.map((variant) => (
             <li key={variant.sku} className="flex items-center gap-2">
-              <span className="text-wa-muted">{variant.variant_label}</span>
+              <span className="text-soy">{variant.variant_label}</span>
               <span className="ml-auto font-medium">{formatMoney(variant.price)}</span>
-              <code className="text-[10px] text-wa-muted">{variant.sku}</code>
+              <code className="text-2xs text-soy">{variant.sku}</code>
             </li>
           ))}
         </ul>
 
         <button
           onClick={() => setOpen((value) => !value)}
-          className="mt-3 text-xs font-medium text-wa-green hover:underline"
+          className="mt-3 text-xs font-medium text-ink hover:underline"
         >
           {open ? 'Hide details' : 'Details'}
         </button>
 
         {open && (
-          <div className="mt-2 space-y-2 border-t border-wa-border pt-2 text-xs text-wa-muted">
+          <div className="mt-2 space-y-2 border-t border-line pt-2 text-xs text-soy">
             {product.short_description && <p>{product.short_description}</p>}
             {product.allergens && (
               <p>
-                <span className="font-medium text-wa-text">Allergens: </span>
+                <span className="font-medium text-ink">Allergens: </span>
                 {product.allergens}
               </p>
             )}
@@ -89,7 +89,7 @@ export function ProductCard({ product }: { product: ProductGroup }) {
                 href={product.product_url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-block text-wa-green hover:underline"
+                className="inline-block text-ink hover:underline"
               >
                 Open on kfoods.lk ↗
               </a>

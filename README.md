@@ -57,15 +57,21 @@ backend/           FastAPI app
   agent/           graph.py, state.py, prompts.py, llm.py, tools/
   routes_public.py the unauthenticated catalogue kfoods.lk builds from
   routes_pos.py    the POS API, behind a device token
+  routes_crm.py    the CRM API the dashboard calls, behind staff auth
+  crm.py           pure customer arithmetic: segments, cadence, analytics
   catalog.py       catalogue payloads + ETags (public carries no stock)
   pricing.py       re-prices a basket from the catalogue; clients never decide
   phones.py        0771234567 / +94 77 ... -> 94771234567, one customer
   jobs/            auto-return background job
-  tests/           226 tests, no network
+  tests/           268 tests, no network
 dashboard/         Next.js App Router + Tailwind
+  app/             overview, customers, inbox, orders, tasks, bills,
+                   insights, products, inventory, login
+  components/ui/   the design system: HeatBars, Icon, Bits (Stat, Chip, …)
+  lib/crm.ts       stage colours, wording and the small client-side helpers
 supabase/
-  migrations/      0001_init.sql .. 0007_function_grants.sql (init, rls,
-                   functions, catalog, inventory, pos, function grants)
+  migrations/      0001_init.sql .. 0009_crm_task_order_index.sql (init, rls,
+                   functions, catalog, inventory, pos, function grants, crm)
   seed.sql         business row + message templates — run by hand
   seed_catalog.sql GENERATED: 90 product variants, business profile, 9 FAQs
 data/              kfood-catalog.json, kfood-images.json — exported from the kfoods.lk site
@@ -235,6 +241,28 @@ Staff (Bearer token from Supabase Auth, must be in `business_members`):
 | POST | `/devices` | Mint a device token. The raw token is returned **once** |
 | POST | `/devices/{id}/revoke` | Make a lost shop Mac useless |
 
+CRM (same staff auth, mounted under `/crm`):
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/crm/customers` | The customer book. Each row carries the stats its orders imply |
+| GET | `/crm/customers/{id}` | One customer: orders, notes, follow-ups, bills, recent messages |
+| PATCH | `/crm/customers/{id}` | A staff edit. Only the fields sent are written |
+| POST | `/crm/customers/{id}/notes` | Add a note. The agent reads these when it answers |
+| PATCH | `/crm/notes/{id}` | Pin or unpin a note |
+| GET/POST | `/crm/tasks` | Follow-ups, soonest due first |
+| PATCH | `/crm/tasks/{id}` | Edit one, or tick it off |
+| GET | `/crm/analytics?days=` | Revenue by day, best sellers, new vs returning, the mix |
+| GET | `/crm/invoices` | The printed POS bills, staff-side |
+| POST | `/crm/invoices/{id}/review` | Record that a human looked at a price mismatch |
+
+Nothing under `/crm` sends a message, moves stock or changes an order's status —
+those have owners already, and a second path to them is a second place for them
+to go wrong. Nothing under `/crm` stores a derived figure either: lifetime
+value, segment and every chart are computed from `orders` on each read by
+`crm.py`, so a number on screen can always be traced back to the orders behind
+it.
+
 Public, unauthenticated (kfoods.lk builds itself from these):
 
 | Method | Path | Purpose |
@@ -351,25 +379,42 @@ To use Gemini directly instead, set `LLM_PROVIDER=gemini` and `GEMINI_API_KEY`, 
   a search for "ramen" returned 3 products instead of 16.
 * **Escalation.** Complaints, refunds, wrong orders, unreadable media, and any agent
   failure hand the chat to a human rather than guessing.
+* **A segment is a suggestion, never a decision.** `crm.suggest_lifecycle` reads the
+  orders; a staff member sets the stage on the record. The dashboard shows when the two
+  disagree and offers the change. Orders do not know that a customer moved to Dubai.
+* **Silence is judged against the customer's own cadence.** Somebody who orders every
+  Friday and has not been seen for three weeks is at risk; somebody who orders twice a
+  year and is three weeks late is not. A fixed "dormant after 60 days" rule gets both
+  wrong, and the one it gets wrong loudest is the regular nobody chases.
+* **Reviewing a printed bill is not correcting it.** `POST /crm/invoices/{id}/review`
+  records that a human looked. The paper in the parcel is the only evidence of what the
+  customer was actually charged, and nothing rewrites it.
 
 ---
 
 ## Tests
 
 ```bash
-cd backend && .venv/bin/pytest        # 226 tests, no network calls
-cd dashboard && npm run typecheck && npm run build
+cd backend && .venv/bin/pytest        # 268 tests, no network calls
+cd dashboard && npm run typecheck && npm run lint && npm run build
 ```
 
 The suite covers the parser against real Meta payload shapes, window arithmetic,
 signature verification, idempotency, the inbound pipeline (dedupe, takeover, media),
 graph wiring with a stubbed model, the outbound policy, and the HTTP surface.
 
+`tests/test_crm.py` is in two halves. The first hands `crm.py` lists of orders and
+pins down every segment rule — a cancelled order counts but is not charged for, a
+big spender who has gone quiet is at risk rather than a VIP, a chart keeps the days
+nobody ordered. The second drives the HTTP surface, including the two rules worth
+proving: a staff edit cannot reach `unread_count` or the 24-hour window, and a POS
+device token cannot read the customer book at all.
+
 ---
 
 ## Deploy
 
-**Backend — Fly.io**
+**Backend — Fly.io** (kept for reference; production moved to Railway below)
 
 ```bash
 cd backend
@@ -382,14 +427,39 @@ fly secrets set WA_ACCESS_TOKEN=... WA_PHONE_NUMBER_ID=... WA_VERIFY_TOKEN=... \
 fly deploy
 ```
 
-**Backend — Railway**: point it at `backend/`, it reads `railway.json`, then set the same
-variables in the dashboard.
+**Backend — Railway (this is what production runs).** Hobby plan, Singapore, one
+replica, no serverless sleep, at `https://kfoodagent-dimuthu-production.up.railway.app`.
+
+`railway.json` is **not** read: Config as Code is closed to services created after
+2026-08-28, so builder, start command and healthcheck are set in the service UI.
+Root Directory is `backend` and watch paths are **cleared** — watch paths resolve
+against the Root Directory, so `/backend/**` matches nothing and pushes silently
+stop deploying. Leave them cleared.
+
+A push to `main` deploys. `main.py:lifespan` refuses to start in production if
+`check_production_readiness()` returns anything, so a container that booted has
+already proved its CORS, token and key config are clean — check `/health` and
+look for `warnings: []`.
 
 Run **one instance**. The auto-return job and the per-contact locks are in-process; more
 than one replica means duplicate jobs. Scaling out means moving both into Postgres first.
 
-**Dashboard — Vercel**: import the repo, root directory `dashboard`, set the three
-`NEXT_PUBLIC_*` variables.
+**Dashboard — Cloudflare Pages (this is what production runs).** Connected to this
+GitHub repo, root directory `dashboard`, build `npm run build`, output `out`. `out/`
+is gitignored on purpose; Pages builds it. `public/_headers` is copied into the
+output and applied at the edge.
+
+The same push therefore deploys **both**. They do not finish together, so expect a
+minute or two where the dashboard is live against a backend that has not restarted
+yet — every page shows its own error text and a Try again button for that window,
+and nothing is lost.
+
+`NEXT_PUBLIC_API_URL` **must carry `https://`**. Without a scheme `fetch()` treats it
+as a relative path and the browser asks Cloudflare for
+`kfoodagent.pages.dev/kfoodagent-…up.railway.app/crm/customers`, which 404s.
+
+Any new dashboard origin has to be added to `CORS_ORIGINS` on the backend, or every
+request from it fails with nothing useful in the console.
 
 Then point the Meta webhook at `https://<backend-host>/webhook`.
 

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { Icon } from './ui/Icon';
 import type { Contact } from '@/lib/types';
 
 /**
@@ -44,16 +45,16 @@ export function TakeoverToggle({
             ? 'Staff are handling this chat. Click to hand it back to the agent.'
             : 'The agent is answering. Click to take over.'
         }
-        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:opacity-60 ${
+        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-60 ${
           human
-            ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
-            : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+            ? 'border-broth/40 bg-broth-wash text-broth'
+            : 'border-scallion/40 bg-scallion-wash text-scallion'
         }`}
       >
-        <span aria-hidden>{human ? '🧑' : '🤖'}</span>
+        <Icon name={human ? 'person' : 'bot'} className="h-4 w-4" />
         {human ? 'You are replying' : 'Agent is replying'}
       </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-xs text-chilli">{error}</span>}
     </div>
   );
 }

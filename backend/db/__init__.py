@@ -1,6 +1,7 @@
 from . import (
     business,
     contacts,
+    crm,
     devices,
     faqs,
     inventory,
@@ -16,6 +17,7 @@ from .client import close_db, get_db, ping
 __all__ = [
     "business",
     "contacts",
+    "crm",
     "devices",
     "faqs",
     "inventory",
