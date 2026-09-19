@@ -1,11 +1,25 @@
-from . import business, contacts, faqs, inventory, menu, messages, notes, orders, templates
+from . import (
+    business,
+    contacts,
+    devices,
+    faqs,
+    inventory,
+    invoices,
+    menu,
+    messages,
+    notes,
+    orders,
+    templates,
+)
 from .client import close_db, get_db, ping
 
 __all__ = [
     "business",
     "contacts",
+    "devices",
     "faqs",
     "inventory",
+    "invoices",
     "menu",
     "messages",
     "notes",

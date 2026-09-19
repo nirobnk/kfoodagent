@@ -51,15 +51,21 @@ backend/           FastAPI app
   config.py        env vars, validated at startup (fails loudly)
   handlers.py      what happens after the webhook returns 200
   outbound.py      the only place that decides text-vs-template and logs a send
-  auth.py          Supabase JWT check + business membership
+  auth.py          staff (Supabase JWT) and device (X-Device-Token) principals
   whatsapp/        client.py (the only caller of Meta), parser.py, window.py, signature.py
   db/              all database access lives here
   agent/           graph.py, state.py, prompts.py, llm.py, tools/
+  routes_public.py the unauthenticated catalogue kfoods.lk builds from
+  routes_pos.py    the POS API, behind a device token
+  catalog.py       catalogue payloads + ETags (public carries no stock)
+  pricing.py       re-prices a basket from the catalogue; clients never decide
+  phones.py        0771234567 / +94 77 ... -> 94771234567, one customer
   jobs/            auto-return background job
-  tests/           89 tests, no network
+  tests/           226 tests, no network
 dashboard/         Next.js App Router + Tailwind
 supabase/
-  migrations/      0001_init.sql, 0002_rls.sql, 0003_functions.sql, 0004_catalog.sql
+  migrations/      0001_init.sql .. 0006_pos.sql (init, rls, functions,
+                   catalog, inventory, pos)
   seed.sql         business row + message templates — run by hand
   seed_catalog.sql GENERATED: 90 product variants, business profile, 9 FAQs
 data/              kfood-catalog.json, kfood-images.json — exported from the kfoods.lk site
@@ -68,6 +74,7 @@ assets/
   brand/           logo, hero, og image, favicon
 scripts/
   build_seed.py    data/kfood-catalog.json -> supabase/seed_catalog.sql
+  mint_device_token.py  a credential for one POS terminal
 ```
 
 ## The catalogue
@@ -223,6 +230,81 @@ Staff (Bearer token from Supabase Auth, must be in `business_members`):
 | GET | `/contacts`, `/orders`, `/templates` | Lists |
 | PATCH | `/orders/{id}/status` | Change status and notify the customer |
 | GET | `/stats/usage` | Messages sent this month |
+| GET | `/inventory`, `/inventory/movements` | Stock levels and the ledger behind them |
+| GET | `/devices` | The POS terminals, live and revoked |
+| POST | `/devices` | Mint a device token. The raw token is returned **once** |
+| POST | `/devices/{id}/revoke` | Make a lost shop Mac useless |
+
+Public, unauthenticated (kfoods.lk builds itself from these):
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/public/catalog` | Products, prices and the store block. ETag + `max-age=300` |
+| GET | `/public/availability` | In stock or out, per SKU. Never a number. `max-age=60` |
+
+Neither carries stock levels, customers or orders — only a boolean per SKU. An
+exact count would tell a competitor the shop's sales volume.
+
+`track_stock` is **already on for all 30 products**, each seeded with a
+placeholder of 1000 singles on 18 September 2026. So availability is live, not
+dormant: nothing reports `out_of_stock` today only because the quantities are
+high. The first real stocktake that replaces those placeholders is the moment a
+product can start reporting `out_of_stock` — and once the website consumes this
+(Phase 3), that reaches `schema.org` Offer markup, where a wrong count has an
+SEO consequence it never had before.
+
+POS (`X-Device-Token`, minted per device — see below):
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/pos/catalog` | The catalogue **with** stock. The till caches it and revalidates by ETag |
+| GET | `/pos/orders` | Open orders with the customer attached, ready to print |
+| GET | `/pos/orders/{id}` | One order and the bills already printed for it |
+| GET | `/pos/contacts/lookup?phone=` | Resolve a phone. Read-only — never creates a contact |
+| POST | `/pos/bills` | Record a printed bill. The only write |
+
+---
+
+## The POS
+
+K FOOD is online only, so the POS is not a till: it prints the invoice that goes
+in the courier parcel for an order that arrived on WhatsApp. Two rules hold it
+in place.
+
+**It never moves stock.** Printing paper is not what takes a pack off the shelf —
+confirming the order is, and `PATCH /orders/{id}/status` already does that. A
+bill leaves `menu_items.stock_quantity` untouched.
+
+**It never decides a price.** The till sends SKUs and quantities; `pricing.py`
+prices them from `menu_items`, exactly as the agent's `create_order` does. A till
+that has been offline for a week cannot move money.
+
+When the two disagree — an offline till printed at last week's price — **both
+figures are kept**. `order_invoices` stores what the paper said and what the
+catalogue says, flags `mismatch`, and writes a line into the order's notes where
+staff will read it. Paper is the contract with the customer; the database is the
+shop's record; neither silently overwrites the other.
+
+### Device tokens
+
+The till holds a credential on a machine several people use, so it is not a staff
+login. It is minted per device, reaches `/pos/*` and nothing else, and **cannot
+send a WhatsApp message to a customer**. That is structural rather than a
+convention: staff auth reads `Authorization` and device auth reads
+`X-Device-Token`, so neither credential can satisfy the other's dependency.
+
+```bash
+backend/.venv/bin/python scripts/mint_device_token.py \
+    --device-id MAC1 --name "Shop Mac — counter"
+```
+
+The raw token is printed once; only its sha256 is stored. Lost it? Revoke the row
+and mint another — there is no recovery, which is the point.
+
+`MAC1` is also printed into every bill number that device issues
+(`KF-MAC1-20260919-003`). That prefix is what stops two shop Macs both issuing
+`-001` on the same day, and it is what makes a replayed bill safe to ignore: the
+bill number is the idempotency key for the till's offline queue.
 
 ---
 
@@ -275,7 +357,7 @@ To use Gemini directly instead, set `LLM_PROVIDER=gemini` and `GEMINI_API_KEY`, 
 ## Tests
 
 ```bash
-cd backend && .venv/bin/pytest        # 89 tests, no network calls
+cd backend && .venv/bin/pytest        # 226 tests, no network calls
 cd dashboard && npm run typecheck && npm run build
 ```
 

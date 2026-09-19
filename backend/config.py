@@ -124,6 +124,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     require_auth: bool = True
     send_rate_limit_per_minute: int = 30
+    # Deliberately high. The failure mode that matters is a POS coming back from
+    # a day offline with forty queued bills: throttling that into 429s would be
+    # the limiter causing the outage the offline queue exists to survive.
+    pos_rate_limit_per_minute: int = 120
     auto_return_minutes: int = 30
     history_turns: int = 10
     notes_limit: int = 5

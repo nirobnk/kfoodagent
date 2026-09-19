@@ -235,11 +235,38 @@ class FakeSupabase:
                 "status": "sent",
                 "error": None,
             },
-            "orders": {"status": "new", "items": [], "total": 0, "notes": None},
+            "orders": {
+                "status": "new",
+                "items": [],
+                "total": 0,
+                "subtotal": 0,
+                "delivery_fee": 0,
+                "discount": 0,
+                "discount_note": None,
+                "notes": None,
+                "source": "agent",
+                "external_ref": None,
+            },
             "inventory_movements": {
                 "order_id": None,
                 "note": None,
                 "created_by": "system",
+            },
+            "device_tokens": {
+                "scopes": ["catalog", "orders"],
+                "revoked_at": None,
+                "revoked_by": None,
+                "last_seen_at": None,
+                "created_by": "owner",
+            },
+            "order_invoices": {
+                "mismatch": False,
+                "mismatch_detail": [],
+                "lines": [],
+                "payment_method": None,
+                "catalog_version": None,
+                "reviewed_at": None,
+                "reviewed_by": None,
             },
         }
     )
@@ -294,6 +321,38 @@ class FakeSupabase:
             ]
             if existing:
                 raise UniqueViolation("duplicate contact")
+        # order_invoices (business_id, bill_no) — the POS idempotency anchor.
+        # Without this the replay test would exercise only the Python pre-check
+        # and never the constraint that actually protects production.
+        if table == "order_invoices" and row.get("bill_no"):
+            existing = [
+                r
+                for r in self.tables.get("order_invoices", [])
+                if r is not row
+                and r.get("business_id") == row.get("business_id")
+                and r.get("bill_no") == row.get("bill_no")
+            ]
+            if existing:
+                raise UniqueViolation("duplicate bill number")
+        # orders (business_id, external_ref) where external_ref is not null.
+        if table == "orders" and row.get("external_ref"):
+            existing = [
+                r
+                for r in self.tables.get("orders", [])
+                if r is not row
+                and r.get("business_id") == row.get("business_id")
+                and r.get("external_ref") == row.get("external_ref")
+            ]
+            if existing:
+                raise UniqueViolation("duplicate order external_ref")
+        if table == "device_tokens" and row.get("token_hash"):
+            existing = [
+                r
+                for r in self.tables.get("device_tokens", [])
+                if r is not row and r.get("token_hash") == row.get("token_hash")
+            ]
+            if existing:
+                raise UniqueViolation("duplicate device token hash")
 
     def apply_stock_trigger(self, row: dict[str, Any], *, removing: bool = False) -> None:
         """Stand in for inventory_movements_apply in 0005_inventory.sql.

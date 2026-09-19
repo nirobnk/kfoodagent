@@ -1,10 +1,20 @@
-"""Staff authentication for the dashboard API.
+"""Authentication. Two kinds of caller, kept apart by construction.
 
-The dashboard signs in with Supabase Auth and sends that access token to this
-backend. We verify the token, then check the user belongs to this business.
-The WhatsApp token and the service role key never leave the backend.
+STAFF — the dashboard signs in with Supabase Auth and sends that access token
+here. We verify it, then check the user belongs to this business. The WhatsApp
+token and the service role key never leave the backend.
 
-Three verification paths, in order of preference:
+DEVICES — the shop Mac running the POS is a machine, not a person. It sends a
+minted token in `X-Device-Token` and reaches only the /pos routes, so a
+credential sitting in localStorage on a shared counter cannot message a customer.
+
+The two use DIFFERENT HEADERS on purpose. `require_staff` reads `Authorization`
+and rejects a request without it; `require_device` reads `X-Device-Token` and
+rejects a request without that. Neither can ever be satisfied by the other's
+credential, which makes the boundary structural rather than a matter of
+remembering to check.
+
+Three staff verification paths, in order of preference:
   * SUPABASE_JWKS_URL set    -> asymmetric signatures (ES256/RS256) verified
                                 locally against the project's published keys
   * SUPABASE_JWT_SECRET set  -> legacy HS256 secret, verified locally
@@ -34,6 +44,12 @@ log = logging.getLogger(__name__)
 _CACHE_TTL = 60.0
 _user_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _member_cache: dict[str, tuple[float, bool]] = {}
+# Device rows, keyed on the token hash, so a burst of queued bills syncing after
+# an outage is one lookup rather than forty.
+_device_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+# When each device's last_seen_at was last written, so it is touched at most
+# once a minute instead of on every request.
+_device_seen: dict[str, float] = {}
 
 
 @dataclass(slots=True)
@@ -177,3 +193,90 @@ async def require_staff(authorization: str | None = Header(default=None)) -> Pri
 
 
 StaffDep = Depends(require_staff)
+
+
+# ---------------------------------------------------------------------------
+# Devices — the shop Mac, which is a machine and not a person
+# ---------------------------------------------------------------------------
+@dataclass(slots=True)
+class Device:
+    """A POS terminal. Reaches the catalogue and the order routes, nothing else."""
+
+    id: str
+    device_id: str          # "MAC1" — also the prefix on every bill it issues
+    name: str
+    business_id: str
+    scopes: tuple[str, ...] = ()
+
+    @property
+    def label(self) -> str:
+        return f"pos:{self.device_id}"
+
+
+async def require_device(
+    x_device_token: str | None = Header(default=None, alias="X-Device-Token"),
+) -> Device:
+    """FastAPI dependency: a registered, unrevoked POS device.
+
+    A SEPARATE header from staff auth, and that is the security boundary, not a
+    convention. `require_staff` reads `Authorization` and 401s without it, so a
+    device token can never satisfy a staff route; this reads `X-Device-Token`,
+    so a staff JWT can never satisfy a device route. There is no code path where
+    one is mistaken for the other, and two tests assert exactly that.
+    """
+    if not settings.require_auth:
+        return Device(
+            id="dev",
+            device_id="DEV",
+            name="development",
+            business_id=settings.business_id,
+            scopes=("catalog", "orders"),
+        )
+
+    token = (x_device_token or "").strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="missing device token")
+
+    token_hash = db.devices.hash_token(token)
+    now = time.monotonic()
+    cached = _device_cache.get(token_hash)
+    if cached and cached[0] > now:
+        row = cached[1]
+    else:
+        row = await db.devices.get_by_hash(token_hash)
+        # Unknown and revoked are the same answer on the wire: telling a caller
+        # which one it is tells them whether they guessed a real token.
+        if not db.devices.is_live(row):
+            log.warning(
+                "device token rejected",
+                extra={"revoked": bool(row), "prefix": (row or {}).get("token_prefix")},
+            )
+            raise HTTPException(status_code=401, detail="invalid device token")
+        _device_cache[token_hash] = (now + _CACHE_TTL, row)
+
+    # Liveness, not correctness — a failed write must never hold up a bill.
+    _touch_device(str(row["id"]))
+
+    return Device(
+        id=str(row["id"]),
+        device_id=str(row["device_id"]),
+        name=str(row.get("name") or ""),
+        business_id=str(row.get("business_id") or settings.business_id),
+        scopes=tuple(row.get("scopes") or ()),
+    )
+
+
+def _touch_device(token_id: str) -> None:
+    """Update last_seen_at at most once a minute, off the request path."""
+    now = time.monotonic()
+    last = _device_seen.get(token_id, 0.0)
+    if now - last < _CACHE_TTL:
+        return
+    _device_seen[token_id] = now
+    try:
+        asyncio.get_running_loop().create_task(db.devices.touch(token_id))
+    except RuntimeError:  # no running loop (tests calling the dependency directly)
+        pass
+
+
+DeviceDep = Depends(require_device)

@@ -15,6 +15,8 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 import db
 import jobs
 import outbound
+import routes_pos
+import routes_public
 import schemas
 from auth import Principal, require_staff
 from config import settings
@@ -84,8 +86,28 @@ app.add_middleware(
     # tunnel, browser requests are answered with ngrok's interstitial HTML page
     # instead of the API. That header opts out of it, so the preflight has to
     # allow it. Harmless once the backend has a real domain.
-    allow_headers=["Authorization", "Content-Type", "ngrok-skip-browser-warning"],
+    #
+    # X-Device-Token: the POS's credential. A separate header from Authorization
+    # on purpose — see auth.py.
+    # If-None-Match: the catalogue and availability routes are the only cacheable
+    # ones, and conditional requests are how a device revalidates 90 products in
+    # a few bytes.
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "ngrok-skip-browser-warning",
+        "X-Device-Token",
+        "If-None-Match",
+    ],
+    # Without this the browser can receive an ETag but not read it, so every
+    # conditional fetch silently degrades into a full one and nobody notices.
+    expose_headers=["ETag"],
 )
+
+# Public catalogue for kfoods.lk, and the POS behind its device token. Both are
+# routers rather than routes here, so their auth tier is declared once.
+app.include_router(routes_public.public)
+app.include_router(routes_pos.pos)
 
 
 # ---------------------------------------------------------------------------
@@ -474,6 +496,51 @@ async def set_stock_tracking(
         menu_item_id=payload.menu_item_id,
         stock_quantity=int(item.get("stock_quantity") or 0),
     )
+
+
+# ---------------------------------------------------------------------------
+# Devices — the POS terminals, administered by staff
+# ---------------------------------------------------------------------------
+@app.get("/devices", response_model=schemas.DeviceListResponse)
+async def list_devices(
+    staff: Principal = Depends(require_staff),
+) -> schemas.DeviceListResponse:
+    """Every till, live or revoked. The token hash never leaves the backend."""
+    return schemas.DeviceListResponse(devices=await db.devices.list_for_business(BUSINESS_ID))
+
+
+@app.post("/devices", response_model=schemas.DeviceCreateResponse)
+async def create_device(
+    payload: schemas.DeviceCreateRequest,
+    staff: Principal = Depends(require_staff),
+) -> schemas.DeviceCreateResponse:
+    """Mint a device token.
+
+    The raw token is returned exactly once, here. Only its hash is stored, so a
+    lost token cannot be recovered — it is revoked and a new one is minted.
+    """
+    device, raw = await db.devices.create(
+        business_id=BUSINESS_ID,
+        device_id=payload.device_id,
+        name=payload.name,
+        created_by=staff.label,
+    )
+    log.info(
+        "device token created",
+        extra={"device_id": device.get("device_id"), "staff": staff.label},
+    )
+    return schemas.DeviceCreateResponse(device=device, token=raw)
+
+
+@app.post("/devices/{token_id}/revoke")
+async def revoke_device(
+    token_id: str, staff: Principal = Depends(require_staff)
+) -> dict[str, Any]:
+    """Make a lost shop Mac useless. POST, because CORS allows no DELETE."""
+    device = await db.devices.revoke(BUSINESS_ID, token_id, revoked_by=staff.label)
+    if not device:
+        raise HTTPException(status_code=404, detail="device not found")
+    return {"ok": True, "device": device}
 
 
 @app.post("/inventory/recompute")
