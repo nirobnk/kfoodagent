@@ -116,7 +116,7 @@ export default function OrdersPage() {
           {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           {!loading && visible.length === 0 && (
             <p className="rounded-xl bg-white p-6 text-center text-sm text-wa-muted ring-1 ring-wa-border">
-              Nothing here. Orders appear as soon as the agent creates one.
+              Nothing  here. Orders appear as soon as the agent creates one.
             </p>
           )}
 
