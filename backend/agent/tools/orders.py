@@ -31,6 +31,27 @@ def money(value: float) -> str:
     return f"Rs. {value:,.0f}"
 
 
+def payment_instruction(profile: dict) -> str:
+    """What to tell the customer about paying, with the details in hand.
+
+    The account number is printed on the shop's own checkout page, so making a
+    customer who has just ordered wait for a human to send it only loses the
+    sale. Carrying it back here saves a second tool call, and stops the reply
+    ending on "staff will send the bank details shortly".
+    """
+    bank = ((profile or {}).get("payment") or {}).get("bankDetails") or {}
+    if not bank.get("accountNumber"):
+        return "Say staff will confirm stock and send the payment details."
+    return (
+        "In the SAME reply give them these bank details so they can pay now: "
+        f"{bank.get('bank')}, {bank.get('branch')} branch, "
+        f"account name {bank.get('accountName')}, "
+        f"account number {bank.get('accountNumber')}. "
+        "Ask them to send the payment receipt on WhatsApp, and say staff will confirm "
+        "stock before dispatch."
+    )
+
+
 @tool
 async def create_order(
     items: list[OrderLine],
@@ -144,8 +165,9 @@ async def create_order(
     return (
         f"Order #{order['order_number']} created: {summary}. "
         f"Items {money(subtotal)} + {delivery_line} = total {money(total)}. Status: new. "
-        "Tell the customer the order number and this total, and that staff will confirm stock "
-        "and send the bank details." + address_line
+        "Tell the customer the order number and this total. "
+        + payment_instruction(profile)
+        + address_line
     )
 
 

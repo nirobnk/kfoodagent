@@ -516,3 +516,79 @@ def test_a_pack_that_cannot_be_made_is_flagged_beside_its_price():
     assert "cannot be made" in variant_note({"units": 20}, product)
     # Nothing is claimed about a product nobody counts.
     assert variant_note({"units": 20}, {"track_stock": False}) == ""
+
+
+# --- the WhatsApp order that came from the website ------------------------
+
+async def test_create_order_hands_over_the_bank_details(tool_env):
+    """A customer pasted a checkout order, the agent confirmed it and ended on
+    "staff will send the bank details shortly" — while the account number was
+    already in the business profile. The tool now carries it back."""
+    _, _, config = tool_env
+
+    result = await create_order.ainvoke(
+        {
+            "items": [{"sku": "RAM-SHIN-1", "quantity": 2}],
+            "delivery_note": "Buddhika, 0763214084, Rideegama, Kurunegala 60044",
+        },
+        config=config,
+    )
+
+    assert "123020163895" in result
+    assert "Hatton National Bank (HNB)" in result
+    assert "Kumarasinghe H G B N" in result
+    assert "receipt" in result
+    assert "staff will confirm" in result
+    # The address came with the paste; do not ask for it again.
+    assert "delivery address" not in result
+
+
+def test_a_shop_without_bank_details_falls_back_to_staff():
+    from agent.tools.orders import payment_instruction
+
+    assert "staff" in payment_instruction({})
+    assert "staff" in payment_instruction({"payment": {"bankDetails": {}}})
+
+
+def test_the_prompt_knows_the_website_checkout_paste():
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "NEW ORDER — kfoods.lk" in prompt
+    assert "Never ask them to repeat what the paste already told you" in prompt
+    assert "do not create a second one" in prompt
+
+
+def test_the_prompt_answers_with_products_not_just_procedure():
+    """Asked "noodles kohomada order krnne", the agent recited the checkout
+    steps and never mentioned a single noodle."""
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "Never answer with procedure alone" in prompt
+
+
+def test_the_prompt_covers_the_awkward_situations():
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    for rule in ("discount", "cancel or change an order", "real person",
+                 "cash on delivery", "outside Sri Lanka", "[image]"):
+        assert rule in prompt, rule
+
+
+def test_a_captioned_attachment_is_labelled_for_the_model():
+    """An image with the caption "payment done" reached the agent as plain
+    text, so it answered as though nothing had been attached."""
+    from agent.graph import _to_lc_message
+
+    photo = _to_lc_message(
+        {"direction": "in", "body": "payment done", "message_type": "image"}
+    )
+    assert photo.content == "[image] payment done"
+
+    # A plain message is untouched, and so is anything we send.
+    text = _to_lc_message({"direction": "in", "body": "hi", "message_type": "text"})
+    assert text.content == "hi"
+    out = _to_lc_message({"direction": "out", "body": "hello", "message_type": "text"})
+    assert out.content == "hello"
+
+    bare = _to_lc_message({"direction": "in", "body": "", "message_type": "image"})
+    assert bare.content == "[image message]"

@@ -32,6 +32,11 @@ log = logging.getLogger(__name__)
 
 MAX_REPLY_CHARS = 900
 
+# An attachment the model cannot open. A caption is readable text, so the
+# message reaches the agent — but unlabelled it looks like an ordinary message,
+# and "payment done" under a photo of a bank slip then gets answered as chat.
+MEDIA_KINDS = {"image", "audio", "video", "document", "voice", "sticker"}
+
 
 @dataclass(slots=True)
 class AgentReply:
@@ -49,9 +54,13 @@ class AgentReply:
 
 def _to_lc_message(row: Mapping[str, Any]) -> Any:
     body = (row.get("body") or "").strip()
+    kind = (row.get("message_type") or "").strip().lower()
     if not body:
-        kind = row.get("message_type") or "media"
-        body = f"[{kind} message]"
+        body = f"[{kind or 'media'} message]"
+    elif kind in MEDIA_KINDS and row.get("direction") == "in":
+        # The caption is all we can read; say so rather than let the agent
+        # answer as though it had seen the attachment.
+        body = f"[{kind}] {body}"
     if row.get("direction") == "in":
         return HumanMessage(content=body)
     if row.get("sender") == "human":
