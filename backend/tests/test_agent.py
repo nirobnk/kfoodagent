@@ -11,6 +11,7 @@ from agent.state import RunContext
 from agent.tools import (
     create_order,
     escalate_to_human,
+    find_dietary_options,
     flag_for_staff,
     payment_details,
     product_details,
@@ -828,12 +829,96 @@ async def test_suggest_products_says_so_plainly_when_nothing_fits(tool_env):
     assert "Nothing in the catalogue fits" in result
 
 
+# --- dietary filtering ----------------------------------------------------
+
+async def test_strict_dietary_filter_returns_one_final_no_match(tool_env):
+    _, ctx, config = tool_env
+
+    result = await find_dietary_options.ainvoke(
+        {
+            "avoid": "pure veg: meat, seafood and egg",
+            "category": "noodles",
+            "strict_traces": True,
+        },
+        config=config,
+    )
+
+    assert "NO MATCH — FINAL ANSWER" in result
+    assert "Do not ask another taste question" in result
+    assert "Shin Ramyun Original" in result
+    assert "Hot Dak Stir Fry Ramen Original" in result
+    assert ctx.tools_called == ["find_dietary_options"]
+
+
+async def test_may_contain_is_controlled_by_strict_traces(tool_env):
+    fake, _, config = tool_env
+    template = next(row for row in fake.rows("menu_items") if row["units"] == 1)
+    fake.seed(
+        "menu_items",
+        [
+            {
+                **template,
+                "id": "plant-noodle-1",
+                "sku": "RAM-PLANT-1",
+                "handle": "plant-noodle",
+                "name": "Plant Noodle — Single Pack",
+                "product_name": "Plant Noodle",
+                "variant_label": "Single Pack",
+                "price": 700,
+                "unit_price": 700,
+                "ingredients": "Wheat flour, soy, chilli, garlic and mushroom.",
+                "allergens": "Contains wheat and soy. May contain milk, egg, fish and beef.",
+                "sort_order": 999,
+            }
+        ],
+    )
+
+    strict = await find_dietary_options.ainvoke(
+        {
+            "avoid": "meat, seafood and egg",
+            "category": "noodles",
+            "strict_traces": True,
+        },
+        config=config,
+    )
+    direct_only = await find_dietary_options.ainvoke(
+        {
+            "avoid": "meat, seafood and egg",
+            "category": "noodles",
+            "strict_traces": False,
+        },
+        config=config,
+    )
+
+    assert "Plant Noodle" not in strict.split("Examples that are not eligible:", 1)[0]
+    assert "Plant Noodle — Rs. 700" in direct_only
+    assert "not vegetarian/vegan certification" in direct_only
+
+
+async def test_dietary_filter_asks_only_for_missing_exclusions(tool_env):
+    _, _, config = tool_env
+
+    result = await find_dietary_options.ainvoke(
+        {"avoid": "something healthy", "category": "noodles"}, config=config
+    )
+
+    assert "NEEDS ONE CLARIFICATION" in result
+
+
 def test_the_prompt_tells_the_agent_to_sell_rather_than_list():
     prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
 
     assert "A customer who has not named a product is deciding, not searching" in prompt
     assert "suggest_products" in prompt
     assert "Ask ONE short question about their taste" in prompt
+
+
+def test_the_prompt_stops_repeating_after_a_dietary_no_match():
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "call find_dietary_options" in prompt
+    assert 'says "NO MATCH — FINAL ANSWER"' in prompt
+    assert "do not promise to look again" in prompt
 
 
 def test_the_prompt_covers_the_payment_conversation_end_to_end():

@@ -1,3 +1,4 @@
+from .dietary import find_dietary_options
 from .escalate import escalate_to_human, flag_for_staff
 from .menu import product_details, search_menu
 from .notes import save_note
@@ -9,6 +10,7 @@ from .store import store_info
 
 TOOLS = [
     search_menu,
+    find_dietary_options,
     suggest_products,
     product_details,
     store_info,
@@ -25,6 +27,7 @@ TOOLS = [
 __all__ = [
     "TOOLS",
     "search_menu",
+    "find_dietary_options",
     "suggest_products",
     "product_details",
     "store_info",
