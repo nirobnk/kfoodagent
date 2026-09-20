@@ -83,6 +83,11 @@ def group_by_product(variants: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "description": row.get("short_description"),
                 "image_url": row.get("image_url"),
                 "product_url": row.get("product_url"),
+                # Present when callers selected DETAIL_FIELDS. Keeping them on
+                # the grouped product lets dietary tools evaluate the label
+                # across the catalogue instead of opening products one by one.
+                "ingredients": row.get("ingredients"),
+                "allergens": row.get("allergens"),
                 "variants": [],
             }
             products[handle] = product
@@ -177,6 +182,23 @@ async def search(business_id: str, query: str, limit: int = 60) -> list[dict[str
 
 async def search_products(business_id: str, query: str, limit: int = 60) -> list[dict[str, Any]]:
     return group_by_product(await search(business_id, query, limit=limit))
+
+
+async def list_detailed_products(
+    business_id: str, limit: int = 300
+) -> list[dict[str, Any]]:
+    """All available products with the ingredient and allergen label attached."""
+    db = await get_db()
+    res = (
+        await db.table(TABLE)
+        .select(DETAIL_FIELDS)
+        .eq("business_id", business_id)
+        .eq("available", True)
+        .order("sort_order")
+        .limit(limit)
+        .execute()
+    )
+    return group_by_product(rows(res))
 
 
 async def get_by_sku(business_id: str, sku: str) -> dict[str, Any] | None:
