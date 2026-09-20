@@ -24,6 +24,17 @@ export default function InboxPage() {
     );
   }, []);
 
+  // Stable for as long as the same chat is open. An inline arrow here changed
+  // identity on every render of this page — and an incoming message re-renders
+  // it — which made the open thread refetch its whole history and drop its
+  // realtime subscription each time a message arrived.
+  const patchSelected = useCallback(
+    (patch: Partial<Contact>) => {
+      if (selectedId) patchContact(selectedId, patch);
+    },
+    [selectedId, patchContact],
+  );
+
   useEffect(() => {
     const supabase = createClient();
     let alive = true;
@@ -147,7 +158,7 @@ export default function InboxPage() {
           <ChatThread
             key={selected.id}
             contact={selected}
-            onContactPatch={(patch) => patchContact(selected.id, patch)}
+            onContactPatch={patchSelected}
             onBack={() => setSelectedId(null)}
           />
         ) : (

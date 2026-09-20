@@ -1,6 +1,9 @@
 import { formatTime } from '@/lib/format';
 import type { Message } from '@/lib/types';
 
+// WhatsApp's own marks: one tick sent, two delivered, two blue read. Drawn as
+// text because that is what they are — swapping in an icon set would put a
+// different shape in front of staff than the one on their phone.
 const TICKS: Record<string, string> = {
   queued: '🕘',
   sent: '✓',
@@ -9,20 +12,31 @@ const TICKS: Record<string, string> = {
   failed: '⚠️',
 };
 
-export function MessageBubble({ message }: { message: Message }) {
+export function MessageBubble({
+  message,
+  startsRun = true,
+}: {
+  message: Message;
+  startsRun?: boolean;
+}) {
   const mine = message.direction === 'out';
   const fromAgent = message.sender === 'agent';
   const fromSystem = message.sender === 'system';
 
+  const side = mine ? 'out' : 'in';
+  const tail = startsRun ? `bubble-tail-${side}` : '';
+  const failed = message.status === 'failed';
+
   return (
-    <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${mine ? 'justify-end' : 'justify-start'} ${startsRun ? 'mt-2' : ''}`}>
       <div
-        className={`max-w-[78%] rounded-lg px-3 py-2 text-sm shadow-card ${
-          mine ? 'bg-scallion-wash' : 'bg-card'
-        } ${message.status === 'failed' ? 'ring-1 ring-chilli/40' : ''}`}
+        className={`bubble bubble-${side} ${tail} ${failed ? 'ring-1 ring-chilli/40' : ''}`}
       >
-        {mine && (
-          <div className="eyebrow mb-1">
+        {/* Not a WhatsApp element, and it stays anyway: the one thing this
+            pane must show that a phone cannot is whether the shop or the
+            agent said it. Once per run, so it does not become noise. */}
+        {mine && startsRun && (
+          <div className="mb-0.5 font-mono text-2xs uppercase tracking-[0.12em] text-wa-green-dark">
             {fromAgent ? 'Agent' : fromSystem ? 'Automatic' : 'Staff'}
             {message.template_name && ` · ${message.template_name}`}
           </div>
@@ -44,16 +58,28 @@ export function MessageBubble({ message }: { message: Message }) {
           </a>
         )}
 
-        <p className="whitespace-pre-wrap break-words">
-          {message.body || <span className="italic text-soy">[{message.message_type}]</span>}
+        {/* The time sits in the last line of text, not under it — that is why
+            a WhatsApp bubble is the width it is. The float reserves the
+            corner so a short message keeps its stamp on the same line and a
+            long one wraps around it. */}
+        <p className="whitespace-pre-wrap break-words text-ink/90">
+          {message.body || (
+            <span className="italic text-wa-meta">[{message.message_type}]</span>
+          )}
+          <span className="float-right ml-2 mt-1 flex select-none items-center gap-0.5 font-mono text-2xs leading-none text-wa-meta tnum">
+            {formatTime(message.created_at)}
+            {mine && (
+              <span
+                title={message.status}
+                className={message.status === 'read' ? 'text-wa-tick' : undefined}
+              >
+                {TICKS[message.status] ?? ''}
+              </span>
+            )}
+          </span>
         </p>
 
-        <div className="mt-1 flex items-center justify-end gap-1 font-mono text-2xs text-soy tnum">
-          <span>{formatTime(message.created_at)}</span>
-          {mine && <span title={message.status}>{TICKS[message.status] ?? ''}</span>}
-        </div>
-
-        {message.error && <p className="mt-1 text-2xs text-chilli">{message.error}</p>}
+        {message.error && <p className="clear-both mt-1 text-2xs text-chilli">{message.error}</p>}
       </div>
     </div>
   );
