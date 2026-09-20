@@ -21,6 +21,7 @@ import db
 import outbound
 from agent import run_agent
 from config import settings
+from transcription import transcribe_audio
 from whatsapp import InboundMessage, StatusUpdate, get_client
 
 log = logging.getLogger(__name__)
@@ -82,6 +83,9 @@ async def _process(message: InboundMessage, business_id: str) -> None:
         message_type=message.type,
         wa_message_id=message.wa_message_id,
         status="delivered",
+        transcription_status=(
+            "pending" if message.type in {"audio", "voice"} and message.media_id else None
+        ),
         created_at=message.timestamp,
     )
     if saved is None:
@@ -102,6 +106,10 @@ async def _process(message: InboundMessage, business_id: str) -> None:
     client = get_client()
     await client.mark_read(message.wa_message_id)
 
+    incoming_text = message.text or ""
+    if message.type in {"audio", "voice"} and message.media_id:
+        incoming_text = await _transcribe_voice(message, str(saved["id"]), client)
+
     if contact.get("human_takeover"):
         # The agent stays out of it — but silence is not a neutral act. A
         # customer who wrote "I need shin red one noodles packet" and then
@@ -119,7 +127,7 @@ async def _process(message: InboundMessage, business_id: str) -> None:
     reply = await run_agent(
         business_id=business_id,
         contact=contact,
-        incoming_text=message.text or "",
+        incoming_text=incoming_text,
     )
 
     if reply.escalated:
@@ -145,6 +153,42 @@ async def _process(message: InboundMessage, business_id: str) -> None:
                 "order_number": (reply.payment_order or {}).get("order_number"),
             },
         )
+        try:
+            has_receipt_media = bool(
+                message.media_id and message.type in {"image", "document"}
+            )
+            receipt = await db.payment_receipts.create(
+                business_id=business_id,
+                contact_id=contact_id,
+                order_id=(reply.payment_order or {}).get("id"),
+                message_id=str(saved["id"]),
+                whatsapp_media_id=message.media_id,
+                media_mime_type=message.media_mime,
+                reported_detail=(
+                    (message.text or "").strip()
+                    or (
+                        "Receipt submitted through WhatsApp"
+                        if message.media_id
+                        else "Payment reported in chat"
+                    )
+                ),
+                storage_status="pending" if has_receipt_media else "not_applicable",
+            )
+            if has_receipt_media:
+                await _store_receipt_media(
+                    message=message,
+                    receipt=receipt,
+                    business_id=business_id,
+                    contact_id=contact_id,
+                    client=client,
+                )
+        except Exception:
+            # Do not strand a paying customer because the audit write failed.
+            # The order/task created by record_payment_receipt still remains.
+            log.exception(
+                "could not store payment receipt record",
+                extra={"contact_id": contact_id, "message_id": saved.get("id")},
+            )
 
     result = await outbound.send_text(
         business_id=business_id, contact=contact, body=reply.text, sender="agent"
@@ -154,6 +198,66 @@ async def _process(message: InboundMessage, business_id: str) -> None:
             "agent reply not delivered",
             extra={"contact_id": contact_id, "reason": result.reason},
         )
+
+
+async def _store_receipt_media(
+    *,
+    message: InboundMessage,
+    receipt: dict[str, Any],
+    business_id: str,
+    contact_id: str,
+    client: Any,
+) -> None:
+    """Copy expiring Meta media into private, durable Supabase Storage."""
+    receipt_id = str(receipt["id"])
+    try:
+        media = await client.download_media(
+            str(message.media_id), max_bytes=settings.receipt_max_bytes
+        )
+        await db.payment_receipts.store_media(
+            receipt_id=receipt_id,
+            business_id=business_id,
+            contact_id=contact_id,
+            content=media.content,
+            mime_type=media.mime_type,
+        )
+    except Exception as exc:
+        await db.payment_receipts.mark_storage_failed(
+            business_id,
+            receipt_id,
+            f"{type(exc).__name__}: {exc}",
+        )
+        log.warning(
+            "receipt media could not be stored",
+            extra={"receipt_id": receipt_id, "error_type": type(exc).__name__},
+        )
+
+
+async def _transcribe_voice(
+    message: InboundMessage, message_id: str, client: Any
+) -> str:
+    """Return usable text while making transcription failure non-fatal."""
+    if not settings.voice_transcription_configured:
+        error = "voice transcription is not configured"
+        await db.messages.fail_transcription(message_id, error)
+        log.warning(error, extra={"message_id": message_id})
+        return message.text or ""
+
+    try:
+        media = await client.download_media(
+            str(message.media_id), max_bytes=settings.voice_max_bytes
+        )
+        transcript = await transcribe_audio(media)
+        await db.messages.complete_transcription(message_id, transcript)
+        return transcript
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"[:500]
+        await db.messages.fail_transcription(message_id, error)
+        log.warning(
+            "voice transcription failed",
+            extra={"message_id": message_id, "error_type": type(exc).__name__},
+        )
+        return message.text or ""
 
 
 async def _acknowledge_takeover(contact: dict[str, Any], business_id: str) -> None:

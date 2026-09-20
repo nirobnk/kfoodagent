@@ -98,6 +98,18 @@ class Settings(BaseSettings):
     # Optional attribution, shown on the OpenRouter activity page.
     openrouter_site_url: str = "https://kfoods.lk"
     openrouter_app_name: str = "K FOOD WhatsApp Agent"
+    # Voice notes use OpenAI's dedicated transcription endpoint even when the
+    # conversational agent itself runs through OpenRouter or Gemini. The
+    # feature degrades to the existing "please type that" flow when the key is
+    # absent or transcription fails; an unavailable speech service must never
+    # drop the customer's message.
+    voice_transcription_model: str = "gpt-4o-mini-transcribe"
+    voice_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=25 * 1024 * 1024)
+    # Operators may lower this, but cannot raise it above two minutes. Duration
+    # is checked locally before any audio is sent to OpenAI.
+    voice_max_duration_seconds: float = Field(default=120.0, gt=0, le=120.0)
+    voice_transcription_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+    receipt_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=10 * 1024 * 1024)
     # Blank means "whatever DEFAULT_MODELS says for the provider in use", so
     # LLM_PROVIDER can be changed on its own.
     llm_model: str = ""
@@ -209,6 +221,11 @@ class Settings(BaseSettings):
     def llm_api_key(self) -> str:
         """The key for the configured provider."""
         return self.api_key_for(self.llm_provider)
+
+    @property
+    def voice_transcription_configured(self) -> bool:
+        """Whether voice notes can be sent to the transcription service."""
+        return bool(_secret(self.openai_api_key))
 
     def model_matches_provider(self) -> bool:
         """Catch the classic slip: switching provider but not the model id.

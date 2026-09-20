@@ -208,10 +208,44 @@ class FakeRpc:
         return Response([])
 
 
+class FakeStorageBucket:
+    def __init__(self, storage: "FakeStorage", bucket: str) -> None:
+        self.storage = storage
+        self.bucket = bucket
+
+    async def upload(
+        self, *, path: str, file: bytes, file_options: dict[str, Any]
+    ) -> dict[str, str]:
+        if self.storage.fail_with:
+            raise self.storage.fail_with
+        self.storage.files[(self.bucket, path)] = {
+            "content": file,
+            "options": dict(file_options),
+        }
+        return {"path": path}
+
+    async def create_signed_url(self, path: str, expires_in: int) -> dict[str, str]:
+        if (self.bucket, path) not in self.storage.files:
+            raise RuntimeError("stored object not found")
+        return {
+            "signedUrl": f"https://storage.example/{self.bucket}/{path}?expires={expires_in}"
+        }
+
+
+@dataclass
+class FakeStorage:
+    files: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
+    fail_with: Exception | None = None
+
+    def from_(self, bucket: str) -> FakeStorageBucket:
+        return FakeStorageBucket(self, bucket)
+
+
 @dataclass
 class FakeSupabase:
     tables: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     rpc_calls: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    storage: FakeStorage = field(default_factory=FakeStorage)
     _serial: int = 1000
 
     DEFAULTS: dict[str, dict[str, Any]] = field(
@@ -234,6 +268,30 @@ class FakeSupabase:
                 "wa_message_id": None,
                 "status": "sent",
                 "error": None,
+                "transcript": None,
+                "transcription_status": None,
+                "transcription_error": None,
+            },
+            "payment_receipts": {
+                "order_id": None,
+                "message_id": None,
+                "whatsapp_media_id": None,
+                "media_mime_type": None,
+                "private_media_path": None,
+                "file_sha256": None,
+                "file_size_bytes": None,
+                "storage_status": "not_applicable",
+                "storage_error": None,
+                "stored_at": None,
+                "reported_detail": None,
+                "extracted_data": {},
+                "amount": None,
+                "bank_name": None,
+                "transaction_reference": None,
+                "analysis_confidence": None,
+                "review_status": "pending_review",
+                "reviewed_by": None,
+                "reviewed_at": None,
             },
             "orders": {
                 "status": "new",
@@ -371,6 +429,14 @@ class FakeSupabase:
             ]
             if existing:
                 raise UniqueViolation("duplicate device token hash")
+        if table == "payment_receipts" and row.get("message_id"):
+            existing = [
+                r
+                for r in self.tables.get("payment_receipts", [])
+                if r is not row and r.get("message_id") == row.get("message_id")
+            ]
+            if existing:
+                raise UniqueViolation("one receipt record per message")
 
     def apply_stock_trigger(self, row: dict[str, Any], *, removing: bool = False) -> None:
         """Stand in for inventory_movements_apply in 0005_inventory.sql.
@@ -402,6 +468,8 @@ class FakeWhatsApp:
         self.templates: list[tuple[str, str, list[Any]]] = []
         self.images: list[tuple[str, str, str]] = []
         self.read_receipts: list[str] = []
+        self.media_downloads: dict[str, Any] = {}
+        self.downloaded_media_ids: list[str] = []
         self.fail_with = fail_with
         self._counter = 0
 
@@ -429,6 +497,15 @@ class FakeWhatsApp:
 
     async def mark_read(self, wa_message_id: str) -> None:
         self.read_receipts.append(wa_message_id)
+
+    async def download_media(self, media_id: str, *, max_bytes: int) -> Any:
+        self.downloaded_media_ids.append(media_id)
+        media = self.media_downloads.get(media_id)
+        if media is None:
+            raise RuntimeError(f"no fake media configured for {media_id}")
+        if len(media.content) > max_bytes:
+            raise RuntimeError("fake media exceeds size limit")
+        return media
 
     async def aclose(self) -> None:
         return None

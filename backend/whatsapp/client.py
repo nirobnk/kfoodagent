@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -21,6 +22,31 @@ from tenacity import (
 from config import settings
 
 log = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class DownloadedMedia:
+    """A WhatsApp attachment held in memory only for immediate processing."""
+
+    content: bytes
+    mime_type: str
+    filename: str
+
+
+_MEDIA_EXTENSIONS = {
+    "audio/aac": ".aac",
+    "audio/amr": ".amr",
+    "audio/m4a": ".m4a",
+    "audio/mp4": ".mp4",
+    "audio/mpeg": ".mp3",
+    "audio/ogg": ".ogg",
+    "audio/wav": ".wav",
+    "audio/webm": ".webm",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "application/pdf": ".pdf",
+}
 
 # Meta error codes that will never succeed on retry.
 PERMANENT_CODES = {
@@ -200,14 +226,67 @@ class WhatsAppClient:
         return message_id
 
     # -- media -------------------------------------------------------------
-    async def media_url(self, media_id: str) -> str | None:
+    async def media_info(self, media_id: str) -> dict[str, Any] | None:
+        """Resolve Meta's short-lived download URL and media metadata."""
         try:
             response = await self._client.get(f"{self._base}/{media_id}")
             response.raise_for_status()
-            return _safe_json(response).get("url")
+            return _safe_json(response)
         except httpx.HTTPError as exc:
             log.warning("media lookup failed", extra={"media_id": media_id, "error": str(exc)})
             return None
+
+    async def media_url(self, media_id: str) -> str | None:
+        info = await self.media_info(media_id)
+        return str(info.get("url")) if info and info.get("url") else None
+
+    async def download_media(self, media_id: str, *, max_bytes: int) -> DownloadedMedia:
+        """Download one Meta attachment with authentication and a hard size cap."""
+        info = await self.media_info(media_id)
+        if not info or not info.get("url"):
+            raise WhatsAppError("WhatsApp media URL could not be resolved")
+
+        declared_size = info.get("file_size")
+        try:
+            if declared_size is not None and int(declared_size) > max_bytes:
+                raise WhatsAppError(f"WhatsApp media exceeds the {max_bytes}-byte limit")
+        except (TypeError, ValueError):
+            pass
+
+        chunks: list[bytes] = []
+        received = 0
+        content_type = ""
+        try:
+            async with self._client.stream("GET", str(info["url"])) as response:
+                response.raise_for_status()
+                content_type = response.headers.get("content-type") or ""
+                content_length = response.headers.get("content-length")
+                try:
+                    if content_length and int(content_length) > max_bytes:
+                        raise WhatsAppError(
+                            f"WhatsApp media exceeds the {max_bytes}-byte limit"
+                        )
+                except (TypeError, ValueError):
+                    # Some proxies return a malformed Content-Length. The
+                    # streaming counter below remains the authoritative cap.
+                    pass
+                async for chunk in response.aiter_bytes():
+                    received += len(chunk)
+                    if received > max_bytes:
+                        raise WhatsAppError(f"WhatsApp media exceeds the {max_bytes}-byte limit")
+                    chunks.append(chunk)
+        except httpx.HTTPError as exc:
+            raise WhatsAppError("WhatsApp media download failed", details=str(exc)) from exc
+
+        mime_type = str(
+            info.get("mime_type") or content_type or "application/octet-stream"
+        ).split(";", 1)[0].strip().lower()
+        extension = _MEDIA_EXTENSIONS.get(mime_type, ".bin")
+        return DownloadedMedia(
+            content=b"".join(chunks),
+            mime_type=mime_type,
+            filename=f"whatsapp-{media_id}{extension}",
+        )
 
 
 def _safe_json(response: httpx.Response) -> dict[str, Any]:

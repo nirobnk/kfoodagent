@@ -59,7 +59,13 @@ class AgentReply:
 def _to_lc_message(row: Mapping[str, Any]) -> Any:
     body = (row.get("body") or "").strip()
     kind = (row.get("message_type") or "").strip().lower()
-    if not body:
+    transcript = (row.get("transcript") or "").strip()
+    transcription_complete = row.get("transcription_status") == "completed"
+    if kind in {"audio", "voice"} and transcript and transcription_complete:
+        # Make provenance explicit so the model does not mistake speech-to-text
+        # for a caption or claim it heard details that were not transcribed.
+        body = f"[{kind} transcript] {transcript}"
+    elif not body:
         # An attachment with no caption. Spelled out rather than left as an
         # empty turn, because the commonest one in this shop is a bank slip
         # sent with no words at all, and the agent has to recognise it as an

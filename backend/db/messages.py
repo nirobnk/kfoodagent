@@ -32,6 +32,9 @@ async def save(
     wa_message_id: str | None = None,
     status: str = "sent",
     error: str | None = None,
+    transcript: str | None = None,
+    transcription_status: str | None = None,
+    transcription_error: str | None = None,
     created_at: datetime | None = None,
 ) -> dict[str, Any] | None:
     """Insert a message.
@@ -52,6 +55,9 @@ async def save(
         "wa_message_id": wa_message_id,
         "status": status,
         "error": error,
+        "transcript": transcript,
+        "transcription_status": transcription_status,
+        "transcription_error": transcription_error,
     }
     if created_at is not None:
         payload["created_at"] = created_at.astimezone(timezone.utc).isoformat()
@@ -71,6 +77,45 @@ async def save(
 
     res = await db.table(TABLE).insert(payload).execute()
     return first(res)
+
+
+async def complete_transcription(message_id: str, transcript: str) -> None:
+    """Persist the readable voice-note text on its source message."""
+    clean = transcript.strip()
+    if not clean:
+        raise ValueError("transcript cannot be empty")
+    db = await get_db()
+    await (
+        db.table(TABLE)
+        .update(
+            {
+                # Keeping body readable means existing dashboard clients show
+                # the result without needing a coordinated frontend release.
+                "body": clean,
+                "transcript": clean,
+                "transcription_status": "completed",
+                "transcription_error": None,
+            }
+        )
+        .eq("id", message_id)
+        .execute()
+    )
+
+
+async def fail_transcription(message_id: str, error: str) -> None:
+    """Record a safe diagnostic while leaving the original message intact."""
+    db = await get_db()
+    await (
+        db.table(TABLE)
+        .update(
+            {
+                "transcription_status": "failed",
+                "transcription_error": (error or "voice transcription failed")[:500],
+            }
+        )
+        .eq("id", message_id)
+        .execute()
+    )
 
 
 async def update_status(wa_message_id: str, status: str, error: str | None = None) -> None:
@@ -101,7 +146,9 @@ async def history(contact_id: str, limit: int = 10) -> list[dict[str, Any]]:
     db = await get_db()
     res = (
         await db.table(TABLE)
-        .select("direction,sender,body,message_type,created_at")
+        .select(
+            "direction,sender,body,message_type,transcript,transcription_status,created_at"
+        )
         .eq("contact_id", contact_id)
         .order("created_at", desc=True)
         .limit(limit)

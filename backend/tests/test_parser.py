@@ -134,6 +134,29 @@ def test_image_caption_is_used_as_text():
     assert message.is_supported
 
 
+def test_voice_message_exposes_media_for_transcription():
+    payload = envelope(
+        {
+            "messages": [
+                {
+                    "from": "94771234567",
+                    "id": "wamid.VOICE",
+                    "timestamp": "1700000000",
+                    "type": "voice",
+                    "voice": {"id": "VOICE1", "mime_type": "audio/ogg; codecs=opus"},
+                }
+            ]
+        }
+    )
+
+    message = parse_webhook(payload).messages[0]
+
+    assert message.type == "voice"
+    assert message.media_id == "VOICE1"
+    assert message.media_mime == "audio/ogg; codecs=opus"
+    assert message.text is None
+
+
 def test_interactive_button_reply():
     payload = envelope(
         {

@@ -12,6 +12,7 @@ import outbound
 from agent.graph import AgentReply
 from tests.conftest import BUSINESS_ID, db_modules
 from tests.fakes import FakeSupabase, FakeWhatsApp
+from whatsapp import DownloadedMedia
 from whatsapp.parser import InboundMessage
 
 
@@ -38,8 +39,13 @@ def wired(monkeypatch):
     return fake, wa, calls
 
 
-def inbound(text: str | None = "hello", wa_message_id: str = "wamid.1",
-            mtype: str = "text") -> InboundMessage:
+def inbound(
+    text: str | None = "hello",
+    wa_message_id: str = "wamid.1",
+    mtype: str = "text",
+    media_id: str | None = None,
+    media_mime: str | None = None,
+) -> InboundMessage:
     return InboundMessage(
         wa_id="94771234567",
         wa_message_id=wa_message_id,
@@ -48,6 +54,8 @@ def inbound(text: str | None = "hello", wa_message_id: str = "wamid.1",
         phone_number_id="PNID",
         text=text,
         profile_name="Nimal",
+        media_id=media_id,
+        media_mime=media_mime,
     )
 
 
@@ -177,6 +185,149 @@ async def test_sticker_is_ignored_quietly(wired):
     assert calls == []
     assert wa.texts == []
     assert fake.rows("contacts")[0]["human_takeover"] is False
+
+
+async def test_voice_note_is_transcribed_before_agent_runs(wired, monkeypatch):
+    fake, wa, calls = wired
+    wa.media_downloads["media-voice"] = DownloadedMedia(
+        content=b"ogg bytes",
+        mime_type="audio/ogg",
+        filename="voice.ogg",
+    )
+
+    async def transcribe(media):
+        assert media.filename == "voice.ogg"
+        return "Shin Ramyun packets dekak ona"
+
+    monkeypatch.setattr(handlers, "transcribe_audio", transcribe)
+
+    await handlers.process_inbound(
+        inbound(
+            None,
+            "wamid.VOICE",
+            mtype="voice",
+            media_id="media-voice",
+            media_mime="audio/ogg",
+        ),
+        BUSINESS_ID,
+    )
+
+    assert calls == ["Shin Ramyun packets dekak ona"]
+    assert wa.downloaded_media_ids == ["media-voice"]
+    stored = next(m for m in fake.rows("messages") if m["direction"] == "in")
+    assert stored["body"] == "Shin Ramyun packets dekak ona"
+    assert stored["transcript"] == "Shin Ramyun packets dekak ona"
+    assert stored["transcription_status"] == "completed"
+
+
+async def test_voice_transcription_failure_keeps_message_and_replies(wired, monkeypatch):
+    fake, wa, calls = wired
+    wa.media_downloads["media-bad"] = DownloadedMedia(
+        content=b"not useful",
+        mime_type="audio/ogg",
+        filename="voice.ogg",
+    )
+
+    async def fail(_media):
+        raise RuntimeError("speech service unavailable")
+
+    monkeypatch.setattr(handlers, "transcribe_audio", fail)
+
+    await handlers.process_inbound(
+        inbound(None, "wamid.BADVOICE", mtype="voice", media_id="media-bad"),
+        BUSINESS_ID,
+    )
+
+    assert calls == [""]
+    assert wa.texts, "the existing ask-to-type fallback should still answer"
+    stored = next(m for m in fake.rows("messages") if m["direction"] == "in")
+    assert stored["transcription_status"] == "failed"
+    assert "RuntimeError" in stored["transcription_error"]
+
+
+async def test_payment_report_creates_separate_receipt_record(wired, monkeypatch):
+    fake, wa, _ = wired
+    order_id = "33333333-3333-3333-3333-333333333333"
+    receipt_bytes = b"durable receipt image"
+    wa.media_downloads["media-receipt"] = DownloadedMedia(
+        content=receipt_bytes,
+        mime_type="image/jpeg",
+        filename="receipt.jpg",
+    )
+
+    async def payment_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
+        return AgentReply(
+            text="Thanks, I will check it and confirm shortly.",
+            payment_reported=True,
+            payment_order={"id": order_id, "order_number": 1001},
+        )
+
+    monkeypatch.setattr(handlers, "run_agent", payment_agent)
+
+    await handlers.process_inbound(
+        inbound(
+            "payment done",
+            "wamid.RECEIPT",
+            mtype="image",
+            media_id="media-receipt",
+            media_mime="image/jpeg",
+        ),
+        BUSINESS_ID,
+    )
+
+    receipts = fake.rows("payment_receipts")
+    assert len(receipts) == 1
+    assert receipts[0]["order_id"] == order_id
+    assert receipts[0]["whatsapp_media_id"] == "media-receipt"
+    assert receipts[0]["media_mime_type"] == "image/jpeg"
+    assert receipts[0]["review_status"] == "pending_review"
+    assert receipts[0]["storage_status"] == "stored"
+    assert receipts[0]["private_media_path"].endswith(".jpg")
+    assert receipts[0]["file_size_bytes"] == len(receipt_bytes)
+    stored_file = fake.storage.files[
+        ("payment-receipts", receipts[0]["private_media_path"])
+    ]
+    assert stored_file["content"] == receipt_bytes
+    assert stored_file["options"]["content-type"] == "image/jpeg"
+    inbound_row = next(m for m in fake.rows("messages") if m["direction"] == "in")
+    assert receipts[0]["message_id"] == inbound_row["id"]
+
+
+async def test_receipt_storage_failure_is_recorded_without_losing_reply(wired, monkeypatch):
+    fake, wa, _ = wired
+    wa.media_downloads["media-receipt"] = DownloadedMedia(
+        content=b"receipt",
+        mime_type="image/jpeg",
+        filename="receipt.jpg",
+    )
+    fake.storage.fail_with = RuntimeError("storage unavailable")
+
+    async def payment_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
+        return AgentReply(
+            text="Thanks, I will check it and confirm shortly.",
+            payment_reported=True,
+            payment_order={"id": "order-1", "order_number": 1001},
+        )
+
+    monkeypatch.setattr(handlers, "run_agent", payment_agent)
+
+    await handlers.process_inbound(
+        inbound(
+            None,
+            "wamid.STORAGEFAIL",
+            mtype="image",
+            media_id="media-receipt",
+            media_mime="image/jpeg",
+        ),
+        BUSINESS_ID,
+    )
+
+    receipt = fake.rows("payment_receipts")[0]
+    assert receipt["storage_status"] == "failed"
+    assert "RuntimeError" in receipt["storage_error"]
+    assert wa.texts == [
+        ("94771234567", "Thanks, I will check it and confirm shortly.")
+    ]
 
 
 async def test_a_crash_inside_processing_never_escapes(wired, monkeypatch):

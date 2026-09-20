@@ -10,6 +10,7 @@ from . import (
     messages,
     notes,
     orders,
+    payment_receipts,
     templates,
 )
 from .client import close_db, get_db, ping
@@ -26,6 +27,7 @@ __all__ = [
     "messages",
     "notes",
     "orders",
+    "payment_receipts",
     "templates",
     "get_db",
     "ping",
