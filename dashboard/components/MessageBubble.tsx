@@ -15,14 +15,14 @@ export function MessageBubble({ message }: { message: Message }) {
   const fromSystem = message.sender === 'system';
 
   return (
-    <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex px-2 ${mine ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[78%] rounded-lg px-3 py-2 text-sm shadow-card ${
-          mine ? 'bg-scallion-wash' : 'bg-card'
+        className={`message-bubble max-w-[86%] rounded-lg px-2.5 pb-1.5 pt-2 text-[13.5px] leading-[19px] shadow-bubble sm:max-w-[72%] ${
+          mine ? 'message-bubble-out bg-wa-bubble' : 'message-bubble-in bg-card'
         } ${message.status === 'failed' ? 'ring-1 ring-chilli/40' : ''}`}
       >
         {mine && (
-          <div className="eyebrow mb-1">
+          <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-wa-dark/70">
             {fromAgent ? 'Agent' : fromSystem ? 'Automatic' : 'Staff'}
             {message.template_name && ` · ${message.template_name}`}
           </div>
@@ -38,7 +38,7 @@ export function MessageBubble({ message }: { message: Message }) {
             <img
               src={message.media_url}
               alt={message.body || 'photo'}
-              className="mb-1 max-h-60 w-auto rounded-md border border-black/5 object-cover"
+              className="mb-1.5 max-h-72 w-auto rounded-md border border-black/5 object-cover"
               loading="lazy"
             />
           </a>
@@ -48,9 +48,16 @@ export function MessageBubble({ message }: { message: Message }) {
           {message.body || <span className="italic text-soy">[{message.message_type}]</span>}
         </p>
 
-        <div className="mt-1 flex items-center justify-end gap-1 font-mono text-2xs text-soy tnum">
+        <div className="-mb-0.5 ml-8 mt-0.5 flex items-center justify-end gap-1 text-[10px] leading-none text-[#667781] tnum">
           <span>{formatTime(message.created_at)}</span>
-          {mine && <span title={message.status}>{TICKS[message.status] ?? ''}</span>}
+          {mine && (
+            <span
+              title={message.status}
+              className={message.status === 'read' ? 'font-bold text-wa-blue' : 'text-[#667781]'}
+            >
+              {TICKS[message.status] ?? ''}
+            </span>
+          )}
         </div>
 
         {message.error && <p className="mt-1 text-2xs text-chilli">{message.error}</p>}

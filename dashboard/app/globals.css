@@ -14,6 +14,7 @@ body {
 body {
   @apply bg-paper text-ink antialiased;
   font-feature-settings: 'cv05', 'ss01';
+  background-image: linear-gradient(135deg, rgba(222, 43, 31, 0.025), transparent 36%);
 }
 
 /* Tabular figures everywhere a number can change under you: a rupee total that
@@ -36,7 +37,7 @@ body {
 @layer components {
   /* --- surfaces --------------------------------------------------------- */
   .card {
-    @apply rounded-card border border-line bg-card shadow-card;
+    @apply rounded-card border border-line bg-card shadow-card transition-shadow;
   }
 
   .field {
@@ -88,9 +89,49 @@ body {
 /* The chat pane keeps its paper texture: it is the one surface in the app that
    is a conversation rather than a record. */
 .chat-bg {
-  background-color: #f1ece7;
-  background-image: radial-gradient(rgba(23, 18, 26, 0.045) 1px, transparent 1px);
-  background-size: 18px 18px;
+  background-color: #efeae2;
+  background-image:
+    linear-gradient(rgba(239, 234, 226, 0.92), rgba(239, 234, 226, 0.92)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='88' viewBox='0 0 88 88'%3E%3Cg fill='none' stroke='%237B8B85' stroke-opacity='.18' stroke-width='1'%3E%3Cpath d='M10 18c4-5 9-5 13 0M17 13v10M53 12l5 5-5 5-5-5zM70 38c0-4 7-4 7 0s-7 4-7 0ZM11 57l8-5 6 7-8 5zM49 52c6 0 10 4 10 10M49 58c3 0 5 2 5 5M75 72l-7 7M68 72l7 7'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: auto, 88px 88px;
+}
+
+.message-bubble {
+  position: relative;
+}
+
+.message-bubble-in::before,
+.message-bubble-out::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+.message-bubble-in::before {
+  left: -7px;
+  border-width: 0 9px 9px 0;
+  border-color: transparent #fff transparent transparent;
+}
+
+.message-bubble-out::before {
+  right: -7px;
+  border-width: 0 0 9px 9px;
+  border-color: transparent transparent transparent #d9fdd3;
+}
+
+@media (min-width: 1024px) {
+  .stock-grid-row {
+    grid-template-columns: minmax(180px, 1fr) 110px 82px 146px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .stock-grid-row {
+    grid-template-columns: minmax(240px, 1fr) 132px 108px 196px;
+  }
 }
 
 .scroll-thin::-webkit-scrollbar {

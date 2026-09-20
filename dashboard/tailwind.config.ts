@@ -48,6 +48,20 @@ const config: Config = {
           dark: '#A81A55',
           wash: '#FDEDF3',
         },
+        // WhatsApp is a distinct work surface inside the wider K FOOD system.
+        // Keeping the colours named prevents one-off greens spreading into CRM
+        // and stock screens where they would lose their meaning.
+        wa: {
+          green: '#00A884',
+          dark: '#075E54',
+          deep: '#064C45',
+          lime: '#25D366',
+          wash: '#E7F8F3',
+          chat: '#EFEAE2',
+          chrome: '#F0F2F5',
+          bubble: '#D9FDD3',
+          blue: '#53BDEB',
+        },
       },
       fontFamily: {
         // Set by next/font in app/layout.tsx.
@@ -69,6 +83,8 @@ const config: Config = {
         // One shadow in the whole system, and it is barely there.
         card: '0 1px 2px rgba(23, 18, 26, 0.04)',
         pop: '0 12px 32px -12px rgba(23, 18, 26, 0.28)',
+        panel: '0 8px 28px rgba(23, 18, 26, 0.07)',
+        bubble: '0 1px 1px rgba(11, 20, 26, 0.13)',
       },
       keyframes: {
         rise: {

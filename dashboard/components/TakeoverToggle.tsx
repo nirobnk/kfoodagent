@@ -45,14 +45,14 @@ export function TakeoverToggle({
             ? 'Staff are handling this chat. Click to hand it back to the agent.'
             : 'The agent is answering. Click to take over.'
         }
-        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-60 ${
+        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${
           human
-            ? 'border-broth/40 bg-broth-wash text-broth'
-            : 'border-scallion/40 bg-scallion-wash text-scallion'
+            ? 'border-broth/30 bg-broth-wash text-broth-dark'
+            : 'border-wa-green/30 bg-wa-wash text-wa-dark'
         }`}
       >
         <Icon name={human ? 'person' : 'bot'} className="h-4 w-4" />
-        {human ? 'You are replying' : 'Agent is replying'}
+        {human ? 'Staff replying' : 'Assistant replying'}
       </button>
       {error && <span className="text-xs text-chilli">{error}</span>}
     </div>

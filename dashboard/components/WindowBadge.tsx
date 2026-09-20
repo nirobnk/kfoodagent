@@ -32,7 +32,7 @@ export function WindowBadge({ contact }: { contact: Contact }) {
           ? 'bg-chilli-wash text-chilli-dark'
           : low
             ? 'bg-broth-wash text-broth'
-            : 'bg-scallion-wash text-scallion'
+            : 'bg-wa-wash text-wa-dark'
       }`}
     >
       {open ? `${formatRemaining(remaining)} to reply free` : 'Window closed'}

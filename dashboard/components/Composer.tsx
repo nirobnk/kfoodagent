@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { api, explainSendFailure } from '@/lib/api';
 import { TemplatePicker } from './TemplatePicker';
+import { Icon } from './ui/Icon';
 import type { Contact } from '@/lib/types';
 
 export function Composer({
@@ -46,16 +47,21 @@ export function Composer({
 
   if (!windowOpen) {
     return (
-      <div className="border-t border-line bg-paper">
+      <div className="border-t border-black/10 bg-wa-chrome">
         <TemplatePicker contactId={contact.id} onSent={onSent} />
       </div>
     );
   }
 
   return (
-    <div className="border-t border-line bg-paper p-3">
-      {error && <p className="mb-2 text-xs text-chilli">{error}</p>}
-      <div className="flex items-end gap-2">
+    <div className="border-t border-black/10 bg-wa-chrome px-3 py-2.5 sm:px-4">
+      <div className="mx-auto max-w-4xl">
+      {error && (
+        <p className="mb-2 rounded-lg bg-chilli-wash px-3 py-2 text-xs text-chilli-dark">
+          {error}
+        </p>
+      )}
+      <div className="flex items-end gap-2.5">
         <textarea
           rows={1}
           value={body}
@@ -66,22 +72,29 @@ export function Composer({
               void send();
             }
           }}
-          placeholder="Type a message. Enter to send, Shift+Enter for a new line."
-          className="max-h-32 min-h-[42px] flex-1 resize-y rounded-2xl border border-line bg-card px-4 py-2.5 text-sm outline-none focus:border-ink"
+          aria-label="Message"
+          placeholder="Type a message"
+          className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border-0 bg-card px-4 py-3 text-sm shadow-card outline-none placeholder:text-[#667781] focus:ring-2 focus:ring-wa-green/20"
         />
         <button
           onClick={send}
           disabled={busy || !body.trim()}
-          className="h-[42px] rounded-full bg-ink px-5 text-sm font-medium text-white transition hover:bg-ink-raised disabled:opacity-50"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-wa-green text-white shadow-card transition hover:bg-wa-dark disabled:cursor-not-allowed disabled:bg-[#8696A0]"
+          aria-label="Send message"
         >
-          {busy ? '…' : 'Send'}
+          {busy ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+          ) : (
+            <Icon name="send" className="h-5 w-5" />
+          )}
         </button>
       </div>
       {!contact.human_takeover && (
-        <p className="mt-2 text-2xs text-soy">
-          Sending switches this chat to you, so the agent stops replying.
+        <p className="mt-1.5 pl-2 text-[10px] text-[#667781]">
+          Sending a message switches this chat from the assistant to you.
         </p>
       )}
+      </div>
     </div>
   );
 }
