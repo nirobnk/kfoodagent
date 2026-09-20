@@ -1,4 +1,4 @@
-from .escalate import escalate_to_human
+from .escalate import escalate_to_human, flag_for_staff
 from .menu import product_details, search_menu
 from .notes import save_note
 from .orders import check_order_status, create_order
@@ -18,6 +18,7 @@ TOOLS = [
     record_payment_receipt,
     save_note,
     send_product_photo,
+    flag_for_staff,
     escalate_to_human,
 ]
 
@@ -33,5 +34,6 @@ __all__ = [
     "record_payment_receipt",
     "save_note",
     "send_product_photo",
+    "flag_for_staff",
     "escalate_to_human",
 ]
