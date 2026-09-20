@@ -208,10 +208,44 @@ class FakeRpc:
         return Response([])
 
 
+class FakeStorageBucket:
+    def __init__(self, storage: "FakeStorage", bucket: str) -> None:
+        self.storage = storage
+        self.bucket = bucket
+
+    async def upload(
+        self, *, path: str, file: bytes, file_options: dict[str, Any]
+    ) -> dict[str, str]:
+        if self.storage.fail_with:
+            raise self.storage.fail_with
+        self.storage.files[(self.bucket, path)] = {
+            "content": file,
+            "options": dict(file_options),
+        }
+        return {"path": path}
+
+    async def create_signed_url(self, path: str, expires_in: int) -> dict[str, str]:
+        if (self.bucket, path) not in self.storage.files:
+            raise RuntimeError("stored object not found")
+        return {
+            "signedUrl": f"https://storage.example/{self.bucket}/{path}?expires={expires_in}"
+        }
+
+
+@dataclass
+class FakeStorage:
+    files: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
+    fail_with: Exception | None = None
+
+    def from_(self, bucket: str) -> FakeStorageBucket:
+        return FakeStorageBucket(self, bucket)
+
+
 @dataclass
 class FakeSupabase:
     tables: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     rpc_calls: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    storage: FakeStorage = field(default_factory=FakeStorage)
     _serial: int = 1000
 
     DEFAULTS: dict[str, dict[str, Any]] = field(
@@ -245,6 +279,10 @@ class FakeSupabase:
                 "media_mime_type": None,
                 "private_media_path": None,
                 "file_sha256": None,
+                "file_size_bytes": None,
+                "storage_status": "not_applicable",
+                "storage_error": None,
+                "stored_at": None,
                 "reported_detail": None,
                 "extracted_data": {},
                 "amount": None,

@@ -109,6 +109,7 @@ class Settings(BaseSettings):
     # is checked locally before any audio is sent to OpenAI.
     voice_max_duration_seconds: float = Field(default=120.0, gt=0, le=120.0)
     voice_transcription_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+    receipt_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=10 * 1024 * 1024)
     # Blank means "whatever DEFAULT_MODELS says for the provider in use", so
     # LLM_PROVIDER can be changed on its own.
     llm_model: str = ""

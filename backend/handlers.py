@@ -154,7 +154,10 @@ async def _process(message: InboundMessage, business_id: str) -> None:
             },
         )
         try:
-            await db.payment_receipts.create(
+            has_receipt_media = bool(
+                message.media_id and message.type in {"image", "document"}
+            )
+            receipt = await db.payment_receipts.create(
                 business_id=business_id,
                 contact_id=contact_id,
                 order_id=(reply.payment_order or {}).get("id"),
@@ -169,7 +172,16 @@ async def _process(message: InboundMessage, business_id: str) -> None:
                         else "Payment reported in chat"
                     )
                 ),
+                storage_status="pending" if has_receipt_media else "not_applicable",
             )
+            if has_receipt_media:
+                await _store_receipt_media(
+                    message=message,
+                    receipt=receipt,
+                    business_id=business_id,
+                    contact_id=contact_id,
+                    client=client,
+                )
         except Exception:
             # Do not strand a paying customer because the audit write failed.
             # The order/task created by record_payment_receipt still remains.
@@ -185,6 +197,39 @@ async def _process(message: InboundMessage, business_id: str) -> None:
         log.error(
             "agent reply not delivered",
             extra={"contact_id": contact_id, "reason": result.reason},
+        )
+
+
+async def _store_receipt_media(
+    *,
+    message: InboundMessage,
+    receipt: dict[str, Any],
+    business_id: str,
+    contact_id: str,
+    client: Any,
+) -> None:
+    """Copy expiring Meta media into private, durable Supabase Storage."""
+    receipt_id = str(receipt["id"])
+    try:
+        media = await client.download_media(
+            str(message.media_id), max_bytes=settings.receipt_max_bytes
+        )
+        await db.payment_receipts.store_media(
+            receipt_id=receipt_id,
+            business_id=business_id,
+            contact_id=contact_id,
+            content=media.content,
+            mime_type=media.mime_type,
+        )
+    except Exception as exc:
+        await db.payment_receipts.mark_storage_failed(
+            business_id,
+            receipt_id,
+            f"{type(exc).__name__}: {exc}",
+        )
+        log.warning(
+            "receipt media could not be stored",
+            extra={"receipt_id": receipt_id, "error_type": type(exc).__name__},
         )
 
 

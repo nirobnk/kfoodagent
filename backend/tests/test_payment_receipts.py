@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 import pytest
 
 import db
@@ -60,3 +62,34 @@ async def test_analysis_fields_do_not_automatically_verify_receipt(fake_db):
     assert updated["review_status"] == "details_match"
     assert updated["review_status"] != "verified"
     assert (await db.payment_receipts.list_for_order("order-1")) == []
+
+
+async def test_receipt_media_is_private_content_addressed_and_retrievable(fake_db):
+    receipt = await db.payment_receipts.create(
+        business_id=BUSINESS_ID,
+        contact_id="contact-1",
+        message_id="message-1",
+        storage_status="pending",
+    )
+    content = b"bank slip bytes"
+
+    stored = await db.payment_receipts.store_media(
+        receipt_id=receipt["id"],
+        business_id=BUSINESS_ID,
+        contact_id="contact-1",
+        content=content,
+        mime_type="image/png",
+    )
+
+    assert stored is not None
+    digest = hashlib.sha256(content).hexdigest()
+    assert stored["file_sha256"] == digest
+    assert stored["storage_status"] == "stored"
+    assert stored["private_media_path"].endswith(f"/{digest}.png")
+    assert fake_db.storage.files[
+        ("payment-receipts", stored["private_media_path"])
+    ]["content"] == content
+
+    url = await db.payment_receipts.signed_media_url(BUSINESS_ID, receipt["id"])
+    assert url is not None
+    assert "expires=300" in url

@@ -80,6 +80,11 @@ class PaymentStatusResponse(BaseModel):
     order: dict[str, Any]
 
 
+class ReceiptFileResponse(BaseModel):
+    url: str
+    expires_in: int
+
+
 class UsageResponse(BaseModel):
     month_start: str
     outbound_messages: int

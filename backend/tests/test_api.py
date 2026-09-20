@@ -321,6 +321,40 @@ def test_paying_an_unknown_order_is_a_404(client, wired):
     assert response.status_code == 404
 
 
+def test_staff_gets_short_lived_url_for_stored_receipt(client, wired):
+    fake, _ = wired
+    receipt_id = "88888888-8888-4888-8888-888888888888"
+    path = f"{BUSINESS_ID}/contact-1/{receipt_id}/slip.jpg"
+    fake.seed(
+        "payment_receipts",
+        [
+            {
+                "id": receipt_id,
+                "business_id": BUSINESS_ID,
+                "contact_id": "contact-1",
+                "private_media_path": path,
+                "storage_status": "stored",
+            }
+        ],
+    )
+    fake.storage.files[("payment-receipts", path)] = {
+        "content": b"receipt",
+        "options": {"content-type": "image/jpeg"},
+    }
+
+    response = client.get(f"/receipts/{receipt_id}/file")
+
+    assert response.status_code == 200
+    assert response.json()["expires_in"] == 300
+    assert "payment-receipts" in response.json()["url"]
+
+
+def test_missing_receipt_file_is_a_404(client, wired):
+    response = client.get("/receipts/88888888-8888-4888-8888-888888888888/file")
+
+    assert response.status_code == 404
+
+
 def test_unknown_order_is_a_404(client, wired):
     response = client.patch(
         "/orders/66666666-6666-6666-6666-666666666666/status", json={"status": "confirmed"}

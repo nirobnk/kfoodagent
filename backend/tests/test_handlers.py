@@ -246,8 +246,14 @@ async def test_voice_transcription_failure_keeps_message_and_replies(wired, monk
 
 
 async def test_payment_report_creates_separate_receipt_record(wired, monkeypatch):
-    fake, _, _ = wired
+    fake, wa, _ = wired
     order_id = "33333333-3333-3333-3333-333333333333"
+    receipt_bytes = b"durable receipt image"
+    wa.media_downloads["media-receipt"] = DownloadedMedia(
+        content=receipt_bytes,
+        mime_type="image/jpeg",
+        filename="receipt.jpg",
+    )
 
     async def payment_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
         return AgentReply(
@@ -275,8 +281,53 @@ async def test_payment_report_creates_separate_receipt_record(wired, monkeypatch
     assert receipts[0]["whatsapp_media_id"] == "media-receipt"
     assert receipts[0]["media_mime_type"] == "image/jpeg"
     assert receipts[0]["review_status"] == "pending_review"
+    assert receipts[0]["storage_status"] == "stored"
+    assert receipts[0]["private_media_path"].endswith(".jpg")
+    assert receipts[0]["file_size_bytes"] == len(receipt_bytes)
+    stored_file = fake.storage.files[
+        ("payment-receipts", receipts[0]["private_media_path"])
+    ]
+    assert stored_file["content"] == receipt_bytes
+    assert stored_file["options"]["content-type"] == "image/jpeg"
     inbound_row = next(m for m in fake.rows("messages") if m["direction"] == "in")
     assert receipts[0]["message_id"] == inbound_row["id"]
+
+
+async def test_receipt_storage_failure_is_recorded_without_losing_reply(wired, monkeypatch):
+    fake, wa, _ = wired
+    wa.media_downloads["media-receipt"] = DownloadedMedia(
+        content=b"receipt",
+        mime_type="image/jpeg",
+        filename="receipt.jpg",
+    )
+    fake.storage.fail_with = RuntimeError("storage unavailable")
+
+    async def payment_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
+        return AgentReply(
+            text="Thanks, I will check it and confirm shortly.",
+            payment_reported=True,
+            payment_order={"id": "order-1", "order_number": 1001},
+        )
+
+    monkeypatch.setattr(handlers, "run_agent", payment_agent)
+
+    await handlers.process_inbound(
+        inbound(
+            None,
+            "wamid.STORAGEFAIL",
+            mtype="image",
+            media_id="media-receipt",
+            media_mime="image/jpeg",
+        ),
+        BUSINESS_ID,
+    )
+
+    receipt = fake.rows("payment_receipts")[0]
+    assert receipt["storage_status"] == "failed"
+    assert "RuntimeError" in receipt["storage_error"]
+    assert wa.texts == [
+        ("94771234567", "Thanks, I will check it and confirm shortly.")
+    ]
 
 
 async def test_a_crash_inside_processing_never_escapes(wired, monkeypatch):

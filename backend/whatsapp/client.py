@@ -44,6 +44,7 @@ _MEDIA_EXTENSIONS = {
     "audio/webm": ".webm",
     "image/jpeg": ".jpg",
     "image/png": ".png",
+    "image/webp": ".webp",
     "application/pdf": ".pdf",
 }
 
