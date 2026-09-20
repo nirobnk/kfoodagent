@@ -12,6 +12,7 @@ import type {
   Note,
   Order,
   OrderStatus,
+  PaymentStatus,
   StockItem,
   StockMovement,
   StockReason,
@@ -118,6 +119,13 @@ export const api = {
       `/orders/${orderId}/status`,
       { method: 'PATCH', body: JSON.stringify({ status, notify }) },
     );
+  },
+
+  setOrderPayment(orderId: string, paymentStatus: PaymentStatus, note?: string) {
+    return request<{ order: Order }>(`/orders/${orderId}/payment`, {
+      method: 'PATCH',
+      body: JSON.stringify({ payment_status: paymentStatus, note }),
+    });
   },
 
   usage() {

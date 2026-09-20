@@ -276,6 +276,51 @@ def test_order_status_change_can_skip_the_notification(client, wired):
     assert wa.texts == []
 
 
+def test_staff_can_mark_an_order_paid(client, wired):
+    """The agent records that a slip arrived; only a person who has seen the
+    account can say the money did. That step is this endpoint."""
+    fake, wa = wired
+    contact = seeded_contact(fake)
+    fake.seed(
+        "orders",
+        [{"id": "77777777-7777-7777-7777-777777777777", "business_id": BUSINESS_ID,
+          "contact_id": contact["id"], "order_number": 1045, "items": [], "total": 1700,
+          "status": "confirmed", "payment_status": "receipt_received",
+          "payment_note": "bank slip screenshot"}],
+    )
+
+    response = client.patch(
+        "/orders/77777777-7777-7777-7777-777777777777/payment",
+        json={"payment_status": "verified", "note": "HNB, seen in the account"},
+    )
+
+    assert response.status_code == 200
+    order = response.json()["order"]
+    assert order["payment_status"] == "verified"
+    # The slip the agent recorded is still there, with who checked it after.
+    assert "bank slip screenshot" in order["payment_note"]
+    assert "HNB, seen in the account" in order["payment_note"]
+    # Money is a separate axis: confirming payment must not move the order on.
+    assert order["status"] == "confirmed"
+    assert wa.texts == [], "marking an order paid does not message the customer"
+
+
+def test_an_invalid_payment_status_is_rejected(client, wired):
+    response = client.patch(
+        "/orders/77777777-7777-7777-7777-777777777777/payment",
+        json={"payment_status": "probably"},
+    )
+    assert response.status_code == 422
+
+
+def test_paying_an_unknown_order_is_a_404(client, wired):
+    response = client.patch(
+        "/orders/66666666-6666-6666-6666-666666666666/payment",
+        json={"payment_status": "verified"},
+    )
+    assert response.status_code == 404
+
+
 def test_unknown_order_is_a_404(client, wired):
     response = client.patch(
         "/orders/66666666-6666-6666-6666-666666666666/status", json={"status": "confirmed"}

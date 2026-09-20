@@ -109,16 +109,18 @@ async def test_inbound_message_reopens_the_window_each_time(wired):
     assert fake.rows("contacts")[0]["unread_count"] == 2
 
 
-async def test_photo_without_caption_goes_to_a_human(wired):
+async def test_photo_without_caption_still_reaches_the_agent(wired):
+    """A bare photo used to mean a silent takeover and a canned "I can't open
+    attachments" reply. Most of them are bank slips, so that answer dropped a
+    paying customer mid-sale. The agent now handles it — it sees the
+    attachment marked unreadable in its history and decides what it is."""
     fake, wa, calls = wired
 
     await handlers.process_inbound(inbound(None, "wamid.IMG", mtype="image"), BUSINESS_ID)
 
-    assert calls == [], "the agent cannot read an image"
-    contact = fake.rows("contacts")[0]
-    assert contact["human_takeover"] is True
-    assert wa.texts and "team" in wa.texts[0][1]
-    assert fake.rows("notes"), "staff get a note explaining the handover"
+    assert calls == [""], "the agent runs; the photo itself is in its history"
+    assert fake.rows("contacts")[0]["human_takeover"] is False
+    assert wa.texts, "the customer gets a real answer, not silence"
 
 
 async def test_sticker_is_ignored_quietly(wired):

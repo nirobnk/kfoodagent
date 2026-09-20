@@ -31,6 +31,11 @@ class RunContext:
     escalated: bool = False
     escalation_reason: str | None = None
     created_order: dict[str, Any] | None = None
+    # A payment slip the customer sent this turn. The handler uses it to leave
+    # the chat with the agent rather than escalating, while still making sure
+    # the order is sitting on someone's task list.
+    payment_reported: bool = False
+    payment_order: dict[str, Any] | None = None
     notes_added: list[str] = field(default_factory=list)
     photos_sent: list[str] = field(default_factory=list)
     tools_called: list[str] = field(default_factory=list)

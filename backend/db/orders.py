@@ -15,6 +15,12 @@ TABLE = "orders"
 STATUSES = ("new", "confirmed", "preparing", "dispatched", "delivered", "cancelled")
 OPEN_STATUSES = ("new", "confirmed", "preparing", "dispatched")
 
+# Where an order stands on money, which is a different axis from `status`.
+# 'receipt_received' means a slip arrived, not that the money did: the agent
+# cannot open the image, so a human moves it on to 'verified'.
+PAYMENT_STATUSES = ("unpaid", "receipt_received", "verified", "refunded")
+UNPAID_STATUSES = ("unpaid", "receipt_received")
+
 
 async def create(
     *,
@@ -51,6 +57,9 @@ async def create(
                 "total": total,
                 "notes": notes,
                 "status": "new",
+                # Spelled out rather than left to the column default, so an
+                # order read straight back from the insert already carries it.
+                "payment_status": "unpaid",
                 "source": source,
                 "external_ref": external_ref,
             }
@@ -144,6 +153,86 @@ async def open_for_contact(business_id: str, contact_id: str) -> dict[str, Any] 
         .execute()
     )
     return first(res)
+
+
+async def set_payment_status(
+    business_id: str,
+    order_id: str,
+    payment_status: str,
+    *,
+    note: str | None = None,
+    reported_at: datetime | None = None,
+) -> dict[str, Any] | None:
+    """Move an order along the money axis.
+
+    `note` is appended to whatever is already recorded rather than replacing
+    it, because a customer often sends the amount in one message and the
+    reference in the next.
+    """
+    if payment_status not in PAYMENT_STATUSES:
+        raise ValueError(f"unknown payment status: {payment_status}")
+
+    patch: dict[str, Any] = {"payment_status": payment_status}
+    if reported_at is not None:
+        patch["payment_reported_at"] = reported_at.astimezone(timezone.utc).isoformat()
+    if note:
+        existing = await get(business_id, order_id)
+        current = ((existing or {}).get("payment_note") or "").strip()
+        patch["payment_note"] = f"{current}\n{note}".strip() if current else note
+
+    db = await get_db()
+    res = (
+        await db.table(TABLE)
+        .update(patch)
+        .eq("business_id", business_id)
+        .eq("id", order_id)
+        .execute()
+    )
+    order = first(res)
+    if order:
+        log.info(
+            "order payment status changed",
+            extra={"order_id": order_id, "payment_status": payment_status},
+        )
+    return order
+
+
+async def mark_receipt_received(
+    business_id: str, order_id: str, *, note: str | None = None
+) -> dict[str, Any] | None:
+    """The customer says they have paid and sent a slip. A human verifies it."""
+    return await set_payment_status(
+        business_id,
+        order_id,
+        "receipt_received",
+        note=note,
+        reported_at=datetime.now(timezone.utc),
+    )
+
+
+async def awaiting_payment(
+    business_id: str, contact_id: str
+) -> dict[str, Any] | None:
+    """This customer's most recent order that nobody has been paid for yet.
+
+    Used when a slip arrives with no order number attached, which is how it
+    almost always arrives.
+    """
+    db = await get_db()
+    res = (
+        await db.table(TABLE)
+        .select("*")
+        .eq("business_id", business_id)
+        .eq("contact_id", contact_id)
+        .in_("status", list(OPEN_STATUSES))
+        .order("created_at", desc=True)
+        .limit(5)
+        .execute()
+    )
+    for order in rows(res):
+        if (order.get("payment_status") or "unpaid") in UNPAID_STATUSES:
+            return order
+    return None
 
 
 async def set_status(business_id: str, order_id: str, status: str) -> dict[str, Any] | None:

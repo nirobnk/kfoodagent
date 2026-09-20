@@ -356,6 +356,38 @@ async def update_order_status(
     return schemas.OrderStatusResponse(order=order, notified=notified, notify_reason=reason)
 
 
+@app.patch("/orders/{order_id}/payment", response_model=schemas.PaymentStatusResponse)
+async def update_order_payment(
+    order_id: str,
+    payload: schemas.PaymentStatusRequest,
+    staff: Principal = Depends(require_staff),
+) -> schemas.PaymentStatusResponse:
+    """Mark an order paid, unpaid or refunded.
+
+    Only a person can say the money arrived. The agent records that a slip was
+    sent; confirming it against the account is this endpoint, and the note
+    keeps whoever checked it on the record.
+    """
+    existing = await db.orders.get(BUSINESS_ID, order_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="order not found")
+
+    note = (payload.note or "").strip()
+    line = f"{payload.payment_status} by {staff.label}" + (f" — {note}" if note else "")
+    order = await db.orders.set_payment_status(
+        BUSINESS_ID, order_id, payload.payment_status, note=line
+    )
+    if order is None:
+        raise HTTPException(status_code=500, detail="payment update failed")
+
+    log.info(
+        "order payment updated",
+        extra={"order_id": order_id, "payment_status": payload.payment_status,
+               "staff": staff.label},
+    )
+    return schemas.PaymentStatusResponse(order=order)
+
+
 @app.get("/orders")
 async def list_orders(
     status: str | None = None,

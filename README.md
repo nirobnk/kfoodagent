@@ -39,7 +39,9 @@ Everything the agent knows about prices comes from `menu_items` through the `sea
 tool. Order totals — including the Rs. 400 island-wide delivery fee, waived over Rs. 5,000 —
 are recomputed from the database inside `create_order`, so a hallucinated price can never
 reach a customer. Delivery, payment, returns and contact answers come from the business
-profile through `store_info`, not from the model's memory.
+profile through `store_info`, not from the model's memory. The bank details go out through
+`payment_details`, which returns them already laid out line by line — prose is how an
+account number loses a digit.
 
 ---
 
@@ -70,8 +72,8 @@ dashboard/         Next.js App Router + Tailwind
   components/ui/   the design system: HeatBars, Icon, Bits (Stat, Chip, …)
   lib/crm.ts       stage colours, wording and the small client-side helpers
 supabase/
-  migrations/      0001_init.sql .. 0009_crm_task_order_index.sql (init, rls,
-                   functions, catalog, inventory, pos, function grants, crm)
+  migrations/      0001_init.sql .. 0010_payments.sql (init, rls, functions,
+                   catalog, inventory, pos, function grants, crm, payments)
   seed.sql         business row + message templates — run by hand
   seed_catalog.sql GENERATED: 90 product variants, business profile, 9 FAQs
 data/              kfood-catalog.json, kfood-images.json — exported from the kfoods.lk site
@@ -119,8 +121,9 @@ above.
 ### 1. Supabase
 
 1. Create a project (region: Singapore is closest to Sri Lanka).
-2. SQL editor → run the migrations in order: `0001_init.sql`, `0002_rls.sql`,
-   `0003_functions.sql`, `0004_catalog.sql`.
+2. SQL editor → run every file in `supabase/migrations/` in numeric order, `0001_init.sql`
+   through `0010_payments.sql`. (`supabase/setup.sql` is an older one-paste bundle and
+   stops at `0004`; it is not enough on its own.)
 3. Edit the `vals` block at the top of `supabase/seed.sql`, run it, and copy the printed
    `business_id`.
 4. Run `supabase/seed_catalog.sql` — the 90 SKUs, the business profile and the FAQs.
@@ -235,6 +238,7 @@ Staff (Bearer token from Supabase Auth, must be in `business_members`):
 | GET | `/contacts/{id}/window` | Time left in the 24-hour window |
 | GET | `/contacts`, `/orders`, `/templates` | Lists |
 | PATCH | `/orders/{id}/status` | Change status and notify the customer |
+| PATCH | `/orders/{id}/payment` | Mark an order paid, unpaid or refunded (staff only) |
 | GET | `/stats/usage` | Messages sent this month |
 | GET | `/inventory`, `/inventory/movements` | Stock levels and the ledger behind them |
 | GET | `/devices` | The POS terminals, live and revoked |
@@ -377,8 +381,30 @@ To use Gemini directly instead, set `LLM_PROVIDER=gemini` and `GEMINI_API_KEY`, 
 * **"Ramen" finds "Ramyun".** Catalogue search expands the words Sri Lankan customers
   actually type (ramen, ramyeon, buldak, fire noodles, drinks, juice, cup) — without it,
   a search for "ramen" returned 3 products instead of 16.
-* **Escalation.** Complaints, refunds, wrong orders, unreadable media, and any agent
-  failure hand the chat to a human rather than guessing.
+* **The agent talks like a person, not a queue.** No "staff will confirm", no "a team
+  member will get back to you", no describing itself as an assistant or a bot. It answers
+  in the first person because that is how a shop assistant answers. Asked outright whether
+  it is a person or a bot, it tells the truth in one line and carries on — sounding human
+  is not the same as claiming to be human, and the prompt draws that line explicitly.
+* **A slip is not a payment.** The agent cannot open the image a customer sends. When one
+  arrives it calls `record_payment_receipt`, which moves the order to `receipt_received`,
+  writes what the customer said into `payment_note` and puts a high-priority task on the
+  list. Only `PATCH /orders/{id}/payment` — a person, in the dashboard — can say
+  `verified`. The prompt forbids the agent from ever telling a customer the money arrived.
+* **An attachment does not end the conversation.** A photo used to mean a silent takeover
+  and a canned "I can't open attachments". Most of them are bank slips, so that reply
+  dropped a paying customer mid-sale. Media now reaches the agent marked as unreadable in
+  its history and it works out what to do — take the slip, ask what the product is, or
+  escalate a complaint. Stickers are still ignored: paying for a reply to a thumbs-up is
+  money spent on nothing.
+* **Recommendations come from the catalogue, with their reasons.** `suggest_products`
+  scores every product against the taste the customer described — heat band, soup or stir
+  fry, budget, what to avoid — and hands back the reason each one matched, so the reply can
+  say *why* rather than reading out a list. It never recommends what is out of stock, and
+  never a 5/5 to somebody who asked for mild.
+* **Escalation.** Complaints, refunds, wrong orders, a payment that has gone wrong, abuse,
+  wholesale, and any agent failure hand the chat to a human rather than guessing. Asking
+  for the bank details is not one of them.
 * **A segment is a suggestion, never a decision.** `crm.suggest_lifecycle` reads the
   orders; a staff member sets the stage on the record. The dashboard shows when the two
   disagree and offers the change. Orders do not know that a customer moved to Dubai.
@@ -395,7 +421,7 @@ To use Gemini directly instead, set `LLM_PROVIDER=gemini` and `GEMINI_API_KEY`, 
 ## Tests
 
 ```bash
-cd backend && .venv/bin/pytest        # 268 tests, no network calls
+cd backend && .venv/bin/pytest        # 290 tests, no network calls
 cd dashboard && npm run typecheck && npm run lint && npm run build
 ```
 

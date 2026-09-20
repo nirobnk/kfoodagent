@@ -15,7 +15,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections import defaultdict
-from typing import Any
 
 import db
 import outbound
@@ -29,13 +28,15 @@ log = logging.getLogger(__name__)
 # must not produce two overlapping replies.
 _locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
-# Media the agent cannot read, but that a human should see.
-ESCALATING_MEDIA = {"image", "video", "document", "audio", "voice"}
-
-UNREADABLE_MEDIA_REPLY = (
-    "Thanks! I can't open attachments, so I've passed this to our team — "
-    "someone will reply shortly."
-)
+# Media the agent cannot open. It still answers these: the commonest
+# attachment this shop receives is a bank slip sent with no caption at all,
+# and the old behaviour — silent takeover plus a canned "I can't open
+# attachments" — dropped every one of those customers mid-sale. The agent sees
+# the attachment marked as unreadable in its history and handles it the way a
+# person would: recognise what it almost certainly is, take it, say thank you.
+# A sticker stays out: it is the WhatsApp equivalent of a thumbs up, and
+# paying for a reply to one is money spent on nothing.
+AGENT_HANDLED_MEDIA = {"image", "video", "document", "audio", "voice"}
 
 
 async def process_inbound(message: InboundMessage, business_id: str | None = None) -> None:
@@ -99,8 +100,8 @@ async def _process(message: InboundMessage, business_id: str) -> None:
         log.info("human is handling this chat, agent silent", extra={"contact_id": contact_id})
         return
 
-    if not message.is_supported:
-        await _handle_unreadable(message, contact, business_id)
+    if not message.is_supported and message.type not in AGENT_HANDLED_MEDIA:
+        log.info("ignoring unsupported message type", extra={"type": message.type})
         return
 
     reply = await run_agent(
@@ -113,6 +114,18 @@ async def _process(message: InboundMessage, business_id: str) -> None:
         # Re-read: escalate_to_human flipped the flag underneath us.
         contact = await db.contacts.get_by_id(business_id, contact_id) or contact
 
+    if reply.payment_reported:
+        # A slip nobody has checked yet. The order carries the flag and a task
+        # is already on the list, so the chat stays with the agent — but the
+        # unread badge makes sure the dashboard shows it needs an eye.
+        log.info(
+            "payment reported by customer",
+            extra={
+                "contact_id": contact_id,
+                "order_number": (reply.payment_order or {}).get("order_number"),
+            },
+        )
+
     result = await outbound.send_text(
         business_id=business_id, contact=contact, body=reply.text, sender="agent"
     )
@@ -121,29 +134,6 @@ async def _process(message: InboundMessage, business_id: str) -> None:
             "agent reply not delivered",
             extra={"contact_id": contact_id, "reason": result.reason},
         )
-
-
-async def _handle_unreadable(
-    message: InboundMessage, contact: dict[str, Any], business_id: str
-) -> None:
-    """Media without a caption: the agent cannot read it, so a human should."""
-    if message.type not in ESCALATING_MEDIA:
-        log.info("ignoring unsupported message type", extra={"type": message.type})
-        return
-
-    await db.contacts.set_takeover(business_id, str(contact["id"]), True, by="agent")
-    await db.notes.add(
-        business_id=business_id,
-        contact_id=str(contact["id"]),
-        note=f"Sent a {message.type} the agent cannot read.",
-        created_by="agent",
-    )
-    await outbound.send_text(
-        business_id=business_id,
-        contact=contact,
-        body=UNREADABLE_MEDIA_REPLY,
-        sender="agent",
-    )
 
 
 async def process_status(update: StatusUpdate) -> None:
