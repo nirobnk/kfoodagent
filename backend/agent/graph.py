@@ -43,6 +43,8 @@ class AgentReply:
     text: str
     escalated: bool = False
     escalation_reason: str | None = None
+    flagged: bool = False
+    flag_reason: str | None = None
     created_order: dict[str, Any] | None = None
     payment_reported: bool = False
     payment_order: dict[str, Any] | None = None
@@ -264,6 +266,8 @@ async def run_agent(
         text=reply_text,
         escalated=ctx.escalated,
         escalation_reason=ctx.escalation_reason,
+        flagged=ctx.flagged,
+        flag_reason=ctx.flag_reason,
         created_order=ctx.created_order,
         payment_reported=ctx.payment_reported,
         payment_order=ctx.payment_order,

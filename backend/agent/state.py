@@ -30,6 +30,11 @@ class RunContext:
     contact: dict[str, Any]
     escalated: bool = False
     escalation_reason: str | None = None
+    # Staff have been told, but the agent is still serving. Kept apart from
+    # `escalated` because conflating the two is what used to leave a customer
+    # talking to nobody.
+    flagged: bool = False
+    flag_reason: str | None = None
     created_order: dict[str, Any] | None = None
     # A payment slip the customer sent this turn. The handler uses it to leave
     # the chat with the agent rather than escalating, while still making sure

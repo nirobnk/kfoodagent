@@ -357,8 +357,11 @@ against OpenRouter's live model list (per 1M tokens, input/output):
 | `openai/gpt-4o-mini` | $0.15 / $0.60 | alternative if Gemini misbehaves on Sinhala |
 | `google/gemini-2.5-flash` | $0.30 / $2.50 | strongest of these, if replies need more judgement |
 
-A typical reply costs roughly 3–5k input tokens (system prompt, catalogue results, last
-10 turns) and ~100 output, so about $0.001 per customer message on the default model.
+A typical reply costs roughly 5–7k input tokens (system prompt, catalogue results, last
+10 turns) and ~100 output. The system prompt is about 3.9k of that: it grew when the
+scope guardrails went in, and that is the deliberate trade — the rules that stop the
+agent answering general-knowledge questions and switching itself off are the ones being
+paid for. Trim the "Situations you will meet" section first if the bill matters more.
 
 To use Gemini directly instead, set `LLM_PROVIDER=gemini` and `GEMINI_API_KEY`, and change
 `LLM_MODEL` to a bare id like `gemini-2.0-flash`.
@@ -402,9 +405,28 @@ To use Gemini directly instead, set `LLM_PROVIDER=gemini` and `GEMINI_API_KEY`, 
   fry, budget, what to avoid — and hands back the reason each one matched, so the reply can
   say *why* rather than reading out a list. It never recommends what is out of stock, and
   never a 5/5 to somebody who asked for mild.
-* **Escalation.** Complaints, refunds, wrong orders, a payment that has gone wrong, abuse,
-  wholesale, and any agent failure hand the chat to a human rather than guessing. Asking
-  for the bank details is not one of them.
+* **The shop, and nothing but the shop.** The agent answers about K FOOD's food, prices,
+  stock, deliveries, orders and payments. General knowledge, politics, news, homework,
+  medical or legal advice, other shops — declined in one warm line and turned back to the
+  food, and the decline holds when the customer pushes. It had been answering who the
+  president of Sri Lanka was, and giving up the longest river in the world on the second
+  ask. Nothing outside the shop is ever treated as work for a person, because that is how
+  a customer ends up waiting for a reply nobody is coming to write.
+* **Two ways to involve a person, and only one of them is silence.** These were a single
+  tool, which meant every "someone should look at this" also switched the agent off:
+  `flag_for_staff` puts a task on the list and the agent **keeps selling**; it covers
+  wholesale, adding to an existing order, a promised date, a question it genuinely cannot
+  answer. `escalate_to_human` hands the conversation over and the agent **stops** — a
+  complaint, a refund, money gone wrong, a wrong or damaged order, abuse, an allergy
+  question `product_details` cannot answer. When the model is unsure, the prompt sends it
+  to the softer one, because a customer still being served can be handed over a minute
+  later and a customer switched off is just waiting.
+* **A chat under takeover still answers once.** Silence is not a neutral act: a customer
+  wrote "I need shin red one noodles packet", then "Please reply", into a chat nobody had
+  picked up, and got nothing. The agent stays out of a chat a person owns, but the number
+  replies once — and only once, judged by whether anything at all has gone out since the
+  takeover started, so a staff reply suppresses it and three messages do not produce three
+  apologies.
 * **A segment is a suggestion, never a decision.** `crm.suggest_lifecycle` reads the
   orders; a staff member sets the stage on the record. The dashboard shows when the two
   disagree and offers the change. Orders do not know that a customer moved to Dubai.
@@ -421,7 +443,7 @@ To use Gemini directly instead, set `LLM_PROVIDER=gemini` and `GEMINI_API_KEY`, 
 ## Tests
 
 ```bash
-cd backend && .venv/bin/pytest        # 290 tests, no network calls
+cd backend && .venv/bin/pytest        # 302 tests, no network calls
 cd dashboard && npm run typecheck && npm run lint && npm run build
 ```
 

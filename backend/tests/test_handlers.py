@@ -81,7 +81,10 @@ async def test_retried_delivery_does_not_reply_twice(wired):
     assert len([m for m in fake.rows("messages") if m["direction"] == "in"]) == 1
 
 
-async def test_agent_stays_silent_during_human_takeover(wired):
+async def test_takeover_stops_the_agent_but_answers_once(wired):
+    """Takeover used to mean absolute silence, and a customer trying to buy
+    something wrote three times into a chat nobody had picked up. The agent
+    still does not serve them — but the number answers."""
     fake, wa, calls = wired
     await handlers.process_inbound(inbound("first", "wamid.A"), BUSINESS_ID)
     contact_id = fake.rows("contacts")[0]["id"]
@@ -92,9 +95,52 @@ async def test_agent_stays_silent_during_human_takeover(wired):
     await handlers.process_inbound(inbound("second", "wamid.B"), BUSINESS_ID)
 
     assert calls == [], "the agent must not run while a human has the chat"
-    assert wa.texts == []
+    assert len(wa.texts) == 1
+    assert "come back to you" in wa.texts[0][1]
     # The message is still stored, so staff see it in the dashboard.
     assert any(m["body"] == "second" for m in fake.rows("messages"))
+
+
+async def test_the_takeover_reply_is_sent_only_once(wired):
+    """Three messages in a row must not produce three apologies."""
+    fake, wa, calls = wired
+    await handlers.process_inbound(inbound("first", "wamid.A"), BUSINESS_ID)
+    contact_id = fake.rows("contacts")[0]["id"]
+    await db.contacts.set_takeover(BUSINESS_ID, contact_id, True, by="staff@kfood.lk")
+    wa.texts.clear()
+    calls.clear()
+
+    await handlers.process_inbound(inbound("hello?", "wamid.B"), BUSINESS_ID)
+    await handlers.process_inbound(inbound("please reply", "wamid.C"), BUSINESS_ID)
+    await handlers.process_inbound(inbound("anyone there", "wamid.D"), BUSINESS_ID)
+
+    assert len(wa.texts) == 1, "one acknowledgement per takeover, not one per message"
+    assert calls == []
+
+
+async def test_a_staff_reply_replaces_the_takeover_acknowledgement(wired):
+    """If a person has already answered, the customer must not then be told
+    that someone will get back to them."""
+    fake, wa, calls = wired
+    await handlers.process_inbound(inbound("first", "wamid.A"), BUSINESS_ID)
+    contact = fake.rows("contacts")[0]
+    await db.contacts.set_takeover(BUSINESS_ID, contact["id"], True, by="staff@kfood.lk")
+
+    # A staff member types a reply in the dashboard.
+    await db.messages.save(
+        business_id=BUSINESS_ID,
+        contact_id=str(contact["id"]),
+        direction="out",
+        sender="human",
+        body="Hi, I am checking that for you now.",
+    )
+    wa.texts.clear()
+    calls.clear()
+
+    await handlers.process_inbound(inbound("thanks", "wamid.B"), BUSINESS_ID)
+
+    assert wa.texts == [], "a person is already talking to them"
+    assert calls == []
 
 
 async def test_inbound_message_reopens_the_window_each_time(wired):

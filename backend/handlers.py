@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections import defaultdict
+from typing import Any
 
 import db
 import outbound
@@ -37,6 +38,11 @@ _locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 # A sticker stays out: it is the WhatsApp equivalent of a thumbs up, and
 # paying for a reply to one is money spent on nothing.
 AGENT_HANDLED_MEDIA = {"image", "video", "document", "audio", "voice"}
+
+# Said once, by the shop, while a person is picking the chat up. Not an
+# apology and not a promise of a time — just an answer, so that writing into
+# this chat does not feel like writing into a dead number.
+TAKEOVER_ACK = "Got your message 🙏 I'm looking into this now and will come back to you shortly."
 
 
 async def process_inbound(message: InboundMessage, business_id: str | None = None) -> None:
@@ -97,6 +103,12 @@ async def _process(message: InboundMessage, business_id: str) -> None:
     await client.mark_read(message.wa_message_id)
 
     if contact.get("human_takeover"):
+        # The agent stays out of it — but silence is not a neutral act. A
+        # customer who wrote "I need shin red one noodles packet" and then
+        # "Please reply" into a chat nobody had picked up got nothing at all,
+        # because takeover was treated as "send nothing, ever". Answer once,
+        # then leave it to the person who now owns it.
+        await _acknowledge_takeover(contact, business_id)
         log.info("human is handling this chat, agent silent", extra={"contact_id": contact_id})
         return
 
@@ -113,6 +125,14 @@ async def _process(message: InboundMessage, business_id: str) -> None:
     if reply.escalated:
         # Re-read: escalate_to_human flipped the flag underneath us.
         contact = await db.contacts.get_by_id(business_id, contact_id) or contact
+
+    if reply.flagged:
+        # Staff have a task waiting, but this chat is still the agent's. Worth
+        # a line in the log precisely because nothing else changes.
+        log.info(
+            "flagged for staff, agent still serving",
+            extra={"contact_id": contact_id, "reason": reply.flag_reason},
+        )
 
     if reply.payment_reported:
         # A slip nobody has checked yet. The order carries the flag and a task
@@ -133,6 +153,31 @@ async def _process(message: InboundMessage, business_id: str) -> None:
         log.error(
             "agent reply not delivered",
             extra={"contact_id": contact_id, "reason": result.reason},
+        )
+
+
+async def _acknowledge_takeover(contact: dict[str, Any], business_id: str) -> None:
+    """Reply once, and only once, while a chat sits in human takeover.
+
+    "Once" is judged by whether anything at all has gone out since the
+    takeover began: a staff reply counts, so a customer never gets this on top
+    of a real answer, and a second or third message from them does not
+    produce a second or third apology.
+    """
+    started_at = contact.get("takeover_started_at")
+    if not started_at:
+        return
+
+    try:
+        if await db.messages.any_outbound_since(str(contact["id"]), str(started_at)):
+            return
+        await outbound.send_text(
+            business_id=business_id, contact=contact, body=TAKEOVER_ACK, sender="agent"
+        )
+        log.info("acknowledged a message during takeover", extra={"contact_id": contact["id"]})
+    except Exception:
+        log.exception(
+            "could not acknowledge during takeover", extra={"contact_id": contact.get("id")}
         )
 
 

@@ -121,6 +121,27 @@ async def list_for_contact(
     return list(reversed(rows(res)))
 
 
+async def any_outbound_since(contact_id: str, since: str) -> bool:
+    """Has anything gone out to this customer since `since`?
+
+    Used to answer "has this chat been silent since a person took it over?"
+    without adding a column to track it: a staff reply, a template, or an
+    earlier acknowledgement all count, so the customer is reassured exactly
+    once and never talked over.
+    """
+    db = await get_db()
+    res = (
+        await db.table(TABLE)
+        .select("id")
+        .eq("contact_id", contact_id)
+        .eq("direction", "out")
+        .gte("created_at", since)
+        .limit(1)
+        .execute()
+    )
+    return bool(rows(res))
+
+
 async def count_since(business_id: str, since: datetime, direction: str = "out") -> int:
     db = await get_db()
     res = (
