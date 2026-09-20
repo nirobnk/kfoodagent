@@ -1,8 +1,8 @@
 /**
  * The icon set, inline.
  *
- * Nine glyphs do not justify a dependency, and a stroked 20px set drawn to one
- * grid stays consistent in a way a mixed-source set does not.
+ * A couple of dozen glyphs do not justify a dependency, and a stroked 20px set
+ * drawn to one grid stays consistent in a way a mixed-source set does not.
  */
 const PATHS: Record<string, string> = {
   today: 'M3 10h18M7 3v3m10-3v3M5 6h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z',
@@ -32,6 +32,7 @@ const PATHS: Record<string, string> = {
   check: 'M20 6 9 17l-5-5',
   refresh: 'M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6',
   out: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+  send: 'M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z',
   phone: 'M15.5 21A12.5 12.5 0 0 1 3 8.5 3.5 3.5 0 0 1 6.5 5l1.6 3.4-2 1.6a10 10 0 0 0 5.9 5.9l1.6-2L17 15.5A3.5 3.5 0 0 1 15.5 21Z',
 };
 

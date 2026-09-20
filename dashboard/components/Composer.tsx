@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { api, explainSendFailure } from '@/lib/api';
 import { TemplatePicker } from './TemplatePicker';
+import { Icon } from './ui/Icon';
 import type { Contact } from '@/lib/types';
 
 export function Composer({
@@ -46,14 +47,14 @@ export function Composer({
 
   if (!windowOpen) {
     return (
-      <div className="border-t border-line bg-paper">
+      <div className="border-t border-wa-divider bg-wa-panel">
         <TemplatePicker contactId={contact.id} onSent={onSent} />
       </div>
     );
   }
 
   return (
-    <div className="border-t border-line bg-paper p-3">
+    <div className="border-t border-wa-divider bg-wa-panel p-3">
       {error && <p className="mb-2 text-xs text-chilli">{error}</p>}
       <div className="flex items-end gap-2">
         <textarea
@@ -67,18 +68,19 @@ export function Composer({
             }
           }}
           placeholder="Type a message. Enter to send, Shift+Enter for a new line."
-          className="max-h-32 min-h-[42px] flex-1 resize-y rounded-2xl border border-line bg-card px-4 py-2.5 text-sm outline-none focus:border-ink"
+          className="max-h-32 min-h-[42px] flex-1 resize-y rounded-2xl border border-transparent bg-wa-in px-4 py-2.5 text-sm outline-none focus:border-wa-green"
         />
         <button
           onClick={send}
           disabled={busy || !body.trim()}
-          className="h-[42px] rounded-full bg-ink px-5 text-sm font-medium text-white transition hover:bg-ink-raised disabled:opacity-50"
+          aria-label="Send"
+          className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-wa-green text-white transition hover:bg-wa-green-dark disabled:opacity-50"
         >
-          {busy ? '…' : 'Send'}
+          {busy ? '…' : <Icon name="send" className="h-5 w-5" />}
         </button>
       </div>
       {!contact.human_takeover && (
-        <p className="mt-2 text-2xs text-soy">
+        <p className="mt-2 text-2xs text-wa-meta">
           Sending switches this chat to you, so the agent stops replying.
         </p>
       )}

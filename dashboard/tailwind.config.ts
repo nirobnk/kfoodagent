@@ -48,6 +48,30 @@ const config: Config = {
           dark: '#A81A55',
           wash: '#FDEDF3',
         },
+
+        /**
+         * WhatsApp's own colours, and the one deliberate exception to the
+         * palette above. They are scoped to the chat pane and used nowhere
+         * else.
+         *
+         * The reason is not decoration. Staff read this thread with the real
+         * WhatsApp open on a phone beside them, and a bubble that is green on
+         * one screen and beige on the other costs a beat of translation on
+         * every message. Matching the app the customer is actually using
+         * makes the pane read at a glance: `out` is what we sent, `in` is
+         * what they sent, and nobody has to learn that.
+         */
+        wa: {
+          bg: '#EFEAE2',        // the chat wallpaper
+          panel: '#F0F2F5',     // header and composer bars
+          out: '#D9FDD3',       // our bubble
+          in: '#FFFFFF',        // theirs
+          divider: '#E9EDEF',
+          meta: '#667781',      // timestamps, ticks before they turn blue
+          tick: '#53BDEB',      // read
+          green: '#00A884',
+          'green-dark': '#008069',
+        },
       },
       fontFamily: {
         // Set by next/font in app/layout.tsx.
@@ -68,6 +92,8 @@ const config: Config = {
       boxShadow: {
         // One shadow in the whole system, and it is barely there.
         card: '0 1px 2px rgba(23, 18, 26, 0.04)',
+        // WhatsApp's bubble shadow: a single hairline, not a drop shadow.
+        bubble: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
         pop: '0 12px 32px -12px rgba(23, 18, 26, 0.28)',
       },
       keyframes: {

@@ -85,12 +85,65 @@ body {
   }
 }
 
-/* The chat pane keeps its paper texture: it is the one surface in the app that
-   is a conversation rather than a record. */
+/* The chat pane is WhatsApp's, not ours.
+   Its wallpaper beige and the faint doodle over it are the two things that
+   make the surface recognisable before a single word is read. The pattern is
+   drawn here rather than shipped as an image so it costs no request and
+   scales cleanly. */
 .chat-bg {
-  background-color: #f1ece7;
-  background-image: radial-gradient(rgba(23, 18, 26, 0.045) 1px, transparent 1px);
-  background-size: 18px 18px;
+  background-color: theme('colors.wa.bg');
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(11, 20, 26, 0.035) 2px, transparent 2px),
+    radial-gradient(circle at 70% 80%, rgba(11, 20, 26, 0.03) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 85% 20%, rgba(11, 20, 26, 0.025) 1px, transparent 1px);
+  background-size: 96px 96px, 64px 64px, 120px 120px;
+}
+
+/* --- bubbles ------------------------------------------------------------
+   A WhatsApp bubble is square on the corner it is spoken from, and only the
+   first of a run wears the little tail. The tail is a CSS triangle rather
+   than an asset, in the same colour as the bubble it hangs off. */
+.bubble {
+  @apply relative max-w-[78%] rounded-lg px-2.5 py-1.5 text-sm shadow-bubble;
+}
+
+.bubble-in {
+  @apply bg-wa-in;
+}
+
+.bubble-out {
+  @apply bg-wa-out;
+}
+
+.bubble-tail-in {
+  border-top-left-radius: 0;
+}
+
+.bubble-tail-out {
+  border-top-right-radius: 0;
+}
+
+.bubble-tail-in::before,
+.bubble-tail-out::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  /* A border triangle: zero box, one coloured edge, one transparent edge.
+     Giving it a width and a height as well would paint a filled block
+     behind the borders instead of a point. */
+  width: 0;
+  height: 0;
+  border-bottom: 13px solid transparent;
+}
+
+.bubble-tail-in::before {
+  left: -8px;
+  border-right: 8px solid theme('colors.wa.in');
+}
+
+.bubble-tail-out::before {
+  right: -8px;
+  border-left: 8px solid theme('colors.wa.out');
 }
 
 .scroll-thin::-webkit-scrollbar {
@@ -100,6 +153,9 @@ body {
 .scroll-thin::-webkit-scrollbar-thumb {
   background: rgba(23, 18, 26, 0.16);
   border-radius: 999px;
+}
+.chat-bg.scroll-thin::-webkit-scrollbar-thumb {
+  background: rgba(11, 20, 26, 0.2);
 }
 .scroll-thin::-webkit-scrollbar-track {
   background: transparent;
