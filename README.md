@@ -211,6 +211,7 @@ the value, which silently breaks `LLM_PROVIDER`, `ENVIRONMENT` and `REQUIRE_AUTH
 | `OPENAI_API_KEY` | Required to transcribe WhatsApp voice notes, even when the chat model uses OpenRouter or Gemini |
 | `VOICE_TRANSCRIPTION_MODEL` | OpenAI transcription model; defaults to `gpt-4o-mini-transcribe` |
 | `VOICE_MAX_BYTES` | Maximum downloaded voice-note size; defaults to 10 MB and cannot exceed 25 MB |
+| `VOICE_MAX_DURATION_SECONDS` | Hard voice-note duration ceiling; defaults to and cannot exceed 120 seconds |
 | `VOICE_TRANSCRIPTION_TIMEOUT_SECONDS` | Per-request transcription timeout; defaults to 30 seconds |
 | `LLM_MODEL` | Routed id, e.g. `google/gemini-3.1-flash-lite`. **Must support tool calling** — without it the agent cannot look up prices |
 | `BUSINESS_ID` | The `businesses.id` from the seed |
