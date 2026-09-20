@@ -11,11 +11,14 @@ from agent.state import RunContext
 from agent.tools import (
     create_order,
     escalate_to_human,
+    payment_details,
     product_details,
+    record_payment_receipt,
     save_note,
     search_menu,
     send_product_photo,
     store_info,
+    suggest_products,
 )
 from tests.conftest import BUSINESS_ID, db_modules
 from tests.fakes import FakeSupabase, seed_kfood
@@ -119,7 +122,7 @@ async def test_store_info_answers_delivery_questions_from_the_profile(tool_env):
     assert "Rs. 400" in result
     assert "5,000" in result
     assert "2-4 days" in result
-    assert "Never promise a delivery date" in result
+    assert "Never promise an exact delivery date" in result
     assert ctx.tools_called == ["store_info"]
 
 
@@ -442,12 +445,13 @@ def test_the_prompt_asks_for_one_product_per_line_with_a_price():
 
 def test_the_prompt_lets_the_agent_give_out_published_bank_details():
     """A customer asked for bank details twice, was told staff would send them,
-    and the chat was escalated — while store_info already returned the account
-    number that is printed on the shop's own checkout page."""
+    and the chat was escalated — while the account number is printed on the
+    shop's own checkout page."""
     prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
 
-    assert "GIVE them the bank, branch, account name and account number" in prompt
-    assert "Do not escalate merely because someone asks for bank details" in prompt
+    assert "call payment_details and send the block it gives you EXACTLY" in prompt
+    assert "never type an account number from memory" in prompt
+    assert "Asking for bank details is not a reason to escalate" in prompt
 
 
 # --- stock ----------------------------------------------------------------
@@ -538,16 +542,19 @@ async def test_create_order_hands_over_the_bank_details(tool_env):
     assert "Hatton National Bank (HNB)" in result
     assert "Kumarasinghe H G B N" in result
     assert "receipt" in result
-    assert "staff will confirm" in result
+    assert "confirm stock" in result
     # The address came with the paste; do not ask for it again.
     assert "delivery address" not in result
 
 
-def test_a_shop_without_bank_details_falls_back_to_staff():
+def test_a_shop_without_bank_details_hands_the_order_to_a_person():
     from agent.tools.orders import payment_instruction
 
-    assert "staff" in payment_instruction({})
-    assert "staff" in payment_instruction({"payment": {"bankDetails": {}}})
+    for profile in ({}, {"payment": {"bankDetails": {}}}):
+        instruction = payment_instruction(profile)
+        assert "escalate_to_human" in instruction
+        # Even the fallback must not put the word "staff" in the agent's mouth.
+        assert "staff" not in instruction.lower()
 
 
 def test_the_prompt_knows_the_website_checkout_paste():
@@ -569,8 +576,8 @@ def test_the_prompt_answers_with_products_not_just_procedure():
 def test_the_prompt_covers_the_awkward_situations():
     prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
 
-    for rule in ("discount", "cancel or change an order", "real person",
-                 "cash on delivery", "outside Sri Lanka", "[image]"):
+    for rule in ("discount", "cancel or change an order", "a person or a bot",
+                 "No card, no cash on delivery", "outside Sri Lanka", "[image]"):
         assert rule in prompt, rule
 
 
@@ -590,5 +597,278 @@ def test_a_captioned_attachment_is_labelled_for_the_model():
     out = _to_lc_message({"direction": "out", "body": "hello", "message_type": "text"})
     assert out.content == "hello"
 
+    # A photo with no caption at all: the model has to know something was
+    # attached before it can work out that it is probably the bank slip.
     bare = _to_lc_message({"direction": "in", "body": "", "message_type": "image"})
-    assert bare.content == "[image message]"
+    assert bare.content.startswith("[image] (no caption")
+
+
+# --- sounding like a person, not a switchboard ----------------------------
+
+def test_the_prompt_never_teaches_the_agent_to_hide_behind_staff():
+    """Asked about delivery, the agent answered "...staff confirm karai". That
+    one word tells a customer they are talking to a queue, not a shop."""
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "Write as yourself, in the first person" in prompt
+    for banned in ("staff will", "our team will", "a team member will"):
+        # They appear once each, inside the sentence forbidding them.
+        assert prompt.count(banned) == 1, banned
+        assert "Never" in prompt[max(0, prompt.index(banned) - 200):prompt.index(banned)]
+
+
+def test_the_prompt_is_honest_when_asked_outright():
+    """Sounding human is not the same as claiming to be human: if a customer
+    asks directly, the answer is the truth, said lightly and once."""
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "a person or a bot" in prompt
+    assert "tell them the truth" in prompt
+    assert "never volunteer it unasked" in prompt
+
+
+async def test_escalating_does_not_announce_the_handover(tool_env):
+    """The customer should hear "let me check this", not "you have been
+    transferred". The handover is real; narrating it is what feels robotic."""
+    _, ctx, config = tool_env
+
+    result = await escalate_to_human.ainvoke({"reason": "wants a refund"}, config=config)
+
+    assert "do not mention staff, a team or a department" in result.lower()
+    assert "own voice" in result
+    assert ctx.escalated is True
+
+
+# --- money ----------------------------------------------------------------
+
+async def test_payment_details_returns_a_block_the_customer_can_copy(tool_env):
+    """Prose is how an account number loses a digit. One fact per line."""
+    _, ctx, config = tool_env
+
+    result = await payment_details.ainvoke({}, config=config)
+
+    assert "Bank: Hatton National Bank (HNB)" in result
+    assert "Branch: Alawwa" in result
+    assert "Account name: Kumarasinghe H G B N" in result
+    assert "Account number: 123020163895" in result
+    # Each on its own line, in that order.
+    lines = [line.strip() for line in result.splitlines()]
+    assert lines.index("Account number: 123020163895") == lines.index("Bank: Hatton National Bank (HNB)") + 3
+    assert "receipt" in result
+    assert ctx.tools_called == ["payment_details"]
+
+
+async def test_payment_details_names_the_amount_when_an_order_is_waiting(tool_env):
+    _, _, config = tool_env
+    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 2}]}, config=config)
+
+    result = await payment_details.ainvoke({}, config=config)
+
+    assert "Amount: Rs. 1,700" in result
+    assert "order #1001" in result
+
+
+async def test_a_shop_with_no_bank_details_does_not_invent_them(tool_env):
+    fake, _, config = tool_env
+    fake.rows("businesses")[0]["profile"] = {"payment": {}}
+    db.business.clear_cache()
+
+    result = await payment_details.ainvoke({}, config=config)
+
+    assert "escalate_to_human" in result
+    assert "123020163895" not in result
+
+
+async def test_recording_a_receipt_flags_the_order_without_claiming_payment(tool_env):
+    """The agent cannot see the slip. It can take it, write it down and say so
+    — what it must never do is tell the customer the money arrived."""
+    fake, ctx, config = tool_env
+    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 2}]}, config=config)
+
+    result = await record_payment_receipt.ainvoke(
+        {"what_they_sent": "bank slip screenshot", "amount": 1700}, config=config
+    )
+
+    order = fake.rows("orders")[0]
+    assert order["payment_status"] == "receipt_received"
+    assert order["payment_reported_at"] is not None
+    assert "Rs. 1,700" in order["payment_note"]
+
+    assert "Do NOT say the payment has been received or verified" in result
+    assert "#1001" in result
+    assert ctx.payment_reported is True
+
+    # Someone has to actually look at it.
+    task = fake.rows("crm_tasks")[0]
+    assert task["title"] == "Check payment for order #1001"
+    assert task["priority"] == "high"
+    assert task["order_id"] == order["id"]
+    assert any("Payment reported" in n["note"] for n in fake.rows("notes"))
+
+
+async def test_a_receipt_with_no_order_behind_it_is_still_recorded(tool_env):
+    fake, ctx, config = tool_env
+
+    result = await record_payment_receipt.ainvoke(
+        {"what_they_sent": "says they paid Rs. 2,000"}, config=config
+    )
+
+    assert "no order on file" in result
+    assert "Do not say the payment has been received" in result
+    assert fake.rows("crm_tasks")[0]["title"] == "Payment with no order — check it"
+    assert ctx.payment_reported is True
+
+
+async def test_a_second_receipt_lands_on_the_same_order(tool_env):
+    """A customer often sends the amount in one message and the reference in
+    the next. The second must not wipe the first."""
+    fake, _, config = tool_env
+    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 1}]}, config=config)
+
+    await record_payment_receipt.ainvoke({"what_they_sent": "slip"}, config=config)
+    await record_payment_receipt.ainvoke(
+        {"what_they_sent": "reference", "reference": "HNB-99812"}, config=config
+    )
+
+    orders = fake.rows("orders")
+    assert len(orders) == 1, "recording a receipt must never create an order"
+    assert "slip" in orders[0]["payment_note"]
+    assert "HNB-99812" in orders[0]["payment_note"]
+
+
+async def test_an_order_starts_out_unpaid(tool_env):
+    fake, _, config = tool_env
+    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 1}]}, config=config)
+
+    assert fake.rows("orders")[0]["payment_status"] == "unpaid"
+
+
+async def test_a_verified_order_is_not_offered_up_for_the_next_slip(tool_env):
+    """Once a human has verified an order, the next slip belongs to whatever
+    the customer ordered after it — not to the one already paid for."""
+    fake, _, config = tool_env
+    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 1}]}, config=config)
+    paid = fake.rows("orders")[0]
+    await db.orders.set_payment_status(BUSINESS_ID, paid["id"], "verified")
+
+    waiting = await db.orders.awaiting_payment(BUSINESS_ID, CONTACT["id"])
+
+    assert waiting is None
+
+
+# --- recommending ---------------------------------------------------------
+
+async def test_suggest_products_reads_the_heat_out_of_what_they_said(tool_env):
+    """"Something not too spicy" has to reach the mild end of the shelf, not
+    the fire noodles."""
+    _, ctx, config = tool_env
+
+    result = await suggest_products.ainvoke(
+        {"taste": "noodles but not too spicy please"}, config=config
+    )
+
+    assert "Shin Ramyun Original" in result
+    assert "Hot Dak" not in result
+    assert "why:" in result
+    assert "RAM-SHIN-1" in result, "the SKU has to come back so an order can follow"
+    assert ctx.tools_called == ["suggest_products"]
+
+
+async def test_suggest_products_sends_the_heat_seekers_to_the_fire_noodles(tool_env):
+    _, _, config = tool_env
+
+    result = await suggest_products.ainvoke(
+        {"taste": "I want the hottest thing you have", "spice": "extreme"}, config=config
+    )
+
+    first_line = result.splitlines()[1]
+    assert "Hot Dak" in first_line
+    assert "heat 5/5" in result
+
+
+async def test_suggest_products_respects_a_budget_and_an_allergy(tool_env):
+    _, _, config = tool_env
+
+    result = await suggest_products.ainvoke(
+        {"taste": "a drink for my daughter", "max_price": 600, "avoid": "milk"},
+        config=config,
+    )
+
+    assert "Binggrae Banana Flavoured Milk" not in result, "avoid must be obeyed"
+
+    within_budget = await suggest_products.ainvoke(
+        {"taste": "a sweet drink", "max_price": 600}, config=config
+    )
+    assert "Binggrae Banana Flavoured Milk" in within_budget
+    assert "Rs. 13,000" not in within_budget
+
+
+async def test_suggest_products_never_recommends_what_is_out_of_stock(tool_env):
+    fake, _, config = tool_env
+    for row in fake.rows("menu_items"):
+        if row["handle"] == "hotdak-original":
+            row["track_stock"] = True
+            row["stock_quantity"] = 0
+
+    result = await suggest_products.ainvoke(
+        {"taste": "the spiciest noodles you have", "spice": "extreme"}, config=config
+    )
+
+    assert "Hot Dak" not in result
+
+
+async def test_suggest_products_says_so_plainly_when_nothing_fits(tool_env):
+    _, _, config = tool_env
+
+    result = await suggest_products.ainvoke(
+        {"taste": "noodles", "max_price": 10}, config=config
+    )
+
+    assert "Nothing in the catalogue fits" in result
+
+
+def test_the_prompt_tells_the_agent_to_sell_rather_than_list():
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "A customer who has not named a product is deciding, not searching" in prompt
+    assert "suggest_products" in prompt
+    assert "Ask ONE short question about their taste" in prompt
+
+
+def test_the_prompt_covers_the_payment_conversation_end_to_end():
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "record_payment_receipt" in prompt
+    assert "NEVER say the payment has been received" in prompt
+    assert "Never finish an order reply without the bank details" in prompt
+    assert "that image is the slip" in prompt
+
+
+def test_the_prompt_says_where_an_open_order_stands_on_money():
+    """Without this the agent cannot tell a customer who has already sent a
+    slip from one who has not, and it either asks a paid customer to pay
+    again or records the same receipt twice."""
+    waiting = build_system_prompt(
+        business_name="K FOOD",
+        contact=CONTACT,
+        open_order={"order_number": 1001, "status": "new", "total": 1700,
+                    "payment_status": "receipt_received", "items": []},
+    )
+    assert "already sent a payment slip" in waiting
+    assert "do not call record_payment_receipt for the same payment" in waiting
+
+    unpaid = build_system_prompt(
+        business_name="K FOOD",
+        contact=CONTACT,
+        open_order={"order_number": 1002, "status": "new", "total": 900,
+                    "payment_status": "unpaid", "items": []},
+    )
+    assert "has NOT been paid for" in unpaid
+
+    # An order written before this column existed must not crash the prompt.
+    legacy = build_system_prompt(
+        business_name="K FOOD",
+        contact=CONTACT,
+        open_order={"order_number": 1003, "status": "new", "total": 900, "items": []},
+    )
+    assert "has NOT been paid for" in legacy

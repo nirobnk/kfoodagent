@@ -44,6 +44,8 @@ class AgentReply:
     escalated: bool = False
     escalation_reason: str | None = None
     created_order: dict[str, Any] | None = None
+    payment_reported: bool = False
+    payment_order: dict[str, Any] | None = None
     tools_called: list[str] = field(default_factory=list)
     failed: bool = False
 
@@ -56,7 +58,14 @@ def _to_lc_message(row: Mapping[str, Any]) -> Any:
     body = (row.get("body") or "").strip()
     kind = (row.get("message_type") or "").strip().lower()
     if not body:
-        body = f"[{kind or 'media'} message]"
+        # An attachment with no caption. Spelled out rather than left as an
+        # empty turn, because the commonest one in this shop is a bank slip
+        # sent with no words at all, and the agent has to recognise it as an
+        # attachment before it can treat it as one.
+        if kind in MEDIA_KINDS and row.get("direction") == "in":
+            body = f"[{kind}] (no caption — you cannot open this, work out what it is)"
+        else:
+            body = f"[{kind or 'media'} message]"
     elif kind in MEDIA_KINDS and row.get("direction") == "in":
         # The caption is all we can read; say so rather than let the agent
         # answer as though it had seen the attachment.
@@ -256,5 +265,7 @@ async def run_agent(
         escalated=ctx.escalated,
         escalation_reason=ctx.escalation_reason,
         created_order=ctx.created_order,
+        payment_reported=ctx.payment_reported,
+        payment_order=ctx.payment_order,
         tools_called=ctx.tools_called,
     )

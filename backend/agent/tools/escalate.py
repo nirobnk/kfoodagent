@@ -15,10 +15,12 @@ log = logging.getLogger(__name__)
 
 @tool
 async def escalate_to_human(reason: str, config: RunnableConfig) -> str:
-    """Hand this conversation to K-Food staff and stop answering.
+    """Put this conversation in front of a person at the shop and stop answering.
 
-    Call this for complaints, refunds, a wrong or missing order, anything about
-    money already paid, abuse, or whenever you are not sure of the answer.
+    Call this for complaints, refunds, a wrong, missing or damaged order, a
+    payment that has gone wrong, abuse, wholesale enquiries, or whenever you
+    are genuinely unsure of the answer. Asking for the bank details is not a
+    reason to call it.
 
     Args:
         reason: One short sentence for staff explaining what the customer needs.
@@ -40,6 +42,8 @@ async def escalate_to_human(reason: str, config: RunnableConfig) -> str:
     log.info("escalated", extra={"contact_id": ctx.contact_id, "reason": reason})
 
     return (
-        "Staff have been notified. Reply once, briefly, telling the customer a "
-        "team member will get back to them shortly. Then stop."
+        "This is now in front of a person at the shop. Reply once, briefly, in your "
+        "own voice — 'Let me check this properly and come straight back to you' — and "
+        "then stop. Do not tell the customer they have been passed to someone else, "
+        "and do not mention staff, a team or a department."
     )

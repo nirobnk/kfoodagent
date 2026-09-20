@@ -9,6 +9,7 @@ from langchain_core.tools import tool
 
 import db
 from agent.state import run_context
+from agent.tools.payments import bank_block
 
 log = logging.getLogger(__name__)
 
@@ -38,18 +39,22 @@ def _delivery(profile: dict) -> str:
         + (f", free on orders over Rs. {free:,}" if free else "")
         + f". Usually arrives in {d.get('estimatedTime')}. "
         f"Minimum order: {d.get('minimumOrder')}. "
-        "Never promise a delivery date — say staff will confirm."
+        "Never promise an exact delivery date — give the usual range and say you "
+        "will confirm once it is on the way."
     )
 
 
 def _payment(profile: dict) -> str:
+    """The same block `payment_details` returns, so the customer always sees
+    the account number laid out the same way whichever tool answered."""
     p = profile.get("payment") or {}
-    bank = p.get("bankDetails") or {}
+    block = bank_block(profile)
     return (
-        f"Payment: {', '.join(p.get('methods', []))} only — there is no card payment. "
-        f"Bank: {bank.get('bank')}, {bank.get('branch')} branch. "
-        f"Account name: {bank.get('accountName')}. Account number: {bank.get('accountNumber')}. "
-        f"Process: {p.get('process')}"
+        f"Payment: {', '.join(p.get('methods', []))} only — there is no card payment "
+        "and no cash on delivery. Send the customer these details exactly as laid out, "
+        f"on their own lines:\n{block}\n"
+        f"Process: {p.get('process')} "
+        "Ask them to send the payment receipt here once they have transferred it."
     )
 
 

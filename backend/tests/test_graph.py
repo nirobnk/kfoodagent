@@ -155,7 +155,10 @@ async def test_an_llm_failure_hands_the_chat_to_a_human(env, monkeypatch):
 
     assert reply.failed is True
     assert reply.escalated is True
-    assert "staff member will reply" in reply.text
+    # The fallback is in the shop's own voice: a customer should not be able
+    # to tell that anything broke.
+    assert "come right back to you" in reply.text
+    assert "staff" not in reply.text.lower()
     assert env.rows("contacts")[0]["human_takeover"] is True
 
 

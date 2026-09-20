@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { Chip } from './ui/Bits';
 import { Icon } from './ui/Icon';
 import { formatMoney, formatRelative, orderSummary } from '@/lib/format';
-import type { Order, OrderStatus } from '@/lib/types';
+import type { Order, OrderStatus, PaymentStatus } from '@/lib/types';
 
 const FLOW: OrderStatus[] = ['new', 'confirmed', 'preparing', 'dispatched', 'delivered'];
 
@@ -22,12 +22,45 @@ const STATUS_STYLE: Record<OrderStatus, string> = {
 // Which status changes send the customer a WhatsApp message.
 const NOTIFIES: OrderStatus[] = ['confirmed', 'preparing', 'dispatched', 'delivered', 'cancelled'];
 
+// Money is a second axis, not another order status. 'receipt_received' is the
+// one that needs a human: the agent takes the slip a customer sends but
+// cannot open it, so nothing is paid until someone has seen the account.
+const PAYMENT_LABEL: Record<PaymentStatus, string> = {
+  unpaid: 'unpaid',
+  receipt_received: 'slip to check',
+  verified: 'paid',
+  refunded: 'refunded',
+};
+
+const PAYMENT_STYLE: Record<PaymentStatus, string> = {
+  unpaid: 'bg-soy/[0.12] text-soy',
+  receipt_received: 'bg-buldak-wash text-buldak-dark',
+  verified: 'bg-scallion-wash text-scallion',
+  refunded: 'bg-ink/[0.08] text-ink',
+};
+
 export function OrderCard({ order, onUpdated }: { order: Order; onUpdated: (order: Order) => void }) {
   const [busy, setBusy] = useState<OrderStatus | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const next = FLOW[FLOW.indexOf(order.status) + 1];
+  const payment: PaymentStatus = order.payment_status ?? 'unpaid';
+
+  async function changePayment(paymentStatus: PaymentStatus) {
+    setBusy('new');
+    setError(null);
+    setNote(null);
+    try {
+      const result = await api.setOrderPayment(order.id, paymentStatus);
+      onUpdated(result.order);
+      setNote(paymentStatus === 'verified' ? 'Marked paid.' : 'Payment status saved.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update the payment.');
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function change(status: OrderStatus) {
     setBusy(status);
@@ -70,6 +103,7 @@ export function OrderCard({ order, onUpdated }: { order: Order; onUpdated: (orde
         </div>
         <span className="ml-auto shrink-0 text-right">
           <Chip className={STATUS_STYLE[order.status]}>{order.status}</Chip>
+          <Chip className={`ml-1 ${PAYMENT_STYLE[payment]}`}>{PAYMENT_LABEL[payment]}</Chip>
           <span className="mt-1 block font-mono text-2xs text-soy">
             {formatRelative(order.created_at)} ago
           </span>
@@ -77,6 +111,9 @@ export function OrderCard({ order, onUpdated }: { order: Order; onUpdated: (orde
       </header>
 
       <p className="mt-3 text-sm">{orderSummary(order)}</p>
+      {order.payment_note && (
+        <p className="mt-1 whitespace-pre-wrap text-xs text-buldak-dark">{order.payment_note}</p>
+      )}
       {order.notes && (
         <p className="mt-1 whitespace-pre-wrap text-xs text-soy">{order.notes}</p>
       )}
@@ -97,6 +134,15 @@ export function OrderCard({ order, onUpdated }: { order: Order; onUpdated: (orde
         {next && (
           <button onClick={() => change(next)} disabled={busy !== null} className="btn-hot">
             {busy === next ? 'Saving…' : `Mark ${next}`}
+          </button>
+        )}
+        {payment !== 'verified' && payment !== 'refunded' && (
+          <button
+            onClick={() => changePayment('verified')}
+            disabled={busy !== null}
+            className="btn-quiet"
+          >
+            Mark paid
           </button>
         )}
         {order.status !== 'cancelled' && order.status !== 'delivered' && (

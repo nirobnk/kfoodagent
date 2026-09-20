@@ -64,6 +64,22 @@ class OrderStatusResponse(BaseModel):
     notify_reason: str | None = None
 
 
+class PaymentStatusRequest(BaseModel):
+    """Where an order stands on money, which staff own.
+
+    The agent may only ever set 'receipt_received' — it records that a slip
+    arrived, never that the money did. Moving an order to 'verified' means a
+    person looked at the account, so it happens here and nowhere else.
+    """
+
+    payment_status: Literal["unpaid", "receipt_received", "verified", "refunded"]
+    note: str | None = None
+
+
+class PaymentStatusResponse(BaseModel):
+    order: dict[str, Any]
+
+
 class UsageResponse(BaseModel):
     month_start: str
     outbound_messages: int

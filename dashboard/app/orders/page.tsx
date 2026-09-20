@@ -8,8 +8,12 @@ import { OrderCard } from '@/components/OrderCard';
 import { formatMoney } from '@/lib/format';
 import type { Order, OrderStatus } from '@/lib/types';
 
-const FILTERS: { label: string; value: 'open' | 'all' | OrderStatus }[] = [
+// 'slips' is the queue the agent fills: a customer sent a payment screenshot
+// nobody has checked against the account yet. It is the one filter with work
+// waiting behind it, so it sits next to Open.
+const FILTERS: { label: string; value: 'open' | 'slips' | 'all' | OrderStatus }[] = [
   { label: 'Open', value: 'open' },
+  { label: 'Slips to check', value: 'slips' },
   { label: 'New', value: 'new' },
   { label: 'Preparing', value: 'preparing' },
   { label: 'Dispatched', value: 'dispatched' },
@@ -21,7 +25,7 @@ const OPEN_STATUSES: OrderStatus[] = ['new', 'confirmed', 'preparing', 'dispatch
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filter, setFilter] = useState<'open' | 'all' | OrderStatus>('open');
+  const [filter, setFilter] = useState<'open' | 'slips' | 'all' | OrderStatus>('open');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,6 +71,8 @@ export default function OrdersPage() {
 
   const visible = useMemo(() => {
     if (filter === 'all') return orders;
+    if (filter === 'slips')
+      return orders.filter((order) => order.payment_status === 'receipt_received');
     if (filter === 'open') return orders.filter((order) => OPEN_STATUSES.includes(order.status));
     return orders.filter((order) => order.status === filter);
   }, [orders, filter]);

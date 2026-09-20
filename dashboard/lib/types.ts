@@ -1,6 +1,12 @@
 export type Direction = 'in' | 'out';
 export type Sender = 'customer' | 'agent' | 'human' | 'system';
 export type MessageStatus = 'queued' | 'sent' | 'delivered' | 'read' | 'failed';
+// Where an order stands on money. Deliberately separate from OrderStatus: an
+// order can be 'new' and paid, or 'dispatched' and still owed for.
+// 'receipt_received' means the customer sent a slip the agent could not open
+// — someone still has to check the account before it becomes 'verified'.
+export type PaymentStatus = 'unpaid' | 'receipt_received' | 'verified' | 'refunded';
+
 export type OrderStatus =
   | 'new'
   | 'confirmed'
@@ -61,6 +67,9 @@ export interface Order {
   delivery_fee: number;
   total: number;
   status: OrderStatus;
+  payment_status: PaymentStatus;
+  payment_reported_at: string | null;
+  payment_note: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;

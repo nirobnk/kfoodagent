@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 import db
 from agent.state import run_context
+from agent.tools.payments import bank_block
 
 log = logging.getLogger(__name__)
 
@@ -37,18 +38,23 @@ def payment_instruction(profile: dict) -> str:
     The account number is printed on the shop's own checkout page, so making a
     customer who has just ordered wait for a human to send it only loses the
     sale. Carrying it back here saves a second tool call, and stops the reply
-    ending on "staff will send the bank details shortly".
+    ending on "the bank details will follow shortly".
+
+    The block is the same one `payment_details` returns, laid out line by line
+    so the customer can copy the account number straight out of the message.
     """
-    bank = ((profile or {}).get("payment") or {}).get("bankDetails") or {}
-    if not bank.get("accountNumber"):
-        return "Say staff will confirm stock and send the payment details."
+    block = bank_block(profile)
+    if not block:
+        return (
+            "Tell them you will send the bank details in a moment, and call "
+            "escalate_to_human."
+        )
     return (
-        "In the SAME reply give them these bank details so they can pay now: "
-        f"{bank.get('bank')}, {bank.get('branch')} branch, "
-        f"account name {bank.get('accountName')}, "
-        f"account number {bank.get('accountNumber')}. "
-        "Ask them to send the payment receipt on WhatsApp, and say staff will confirm "
-        "stock before dispatch."
+        "In the SAME reply, send them these bank details exactly as laid out here, "
+        "on their own lines, so they can pay now:\n"
+        f"{block}\n"
+        "Then ask them, warmly, to send the payment receipt here once they have "
+        "transferred it, and say you will confirm stock and get it moving."
     )
 
 
