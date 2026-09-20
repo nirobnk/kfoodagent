@@ -42,6 +42,16 @@ export function MessageBubble({
           </div>
         )}
 
+        {!mine && ['audio', 'voice'].includes(message.message_type) && (
+          <div className="mb-1 font-mono text-2xs uppercase tracking-[0.1em] text-wa-green-dark">
+            {message.transcription_status === 'completed'
+              ? 'Voice transcript'
+              : message.transcription_status === 'pending'
+                ? 'Transcribing voice…'
+                : 'Voice message'}
+          </div>
+        )}
+
         {message.media_url && (
           // Staff need to see the photo the customer got, not a line of text
           // describing it. The catalogue is served from kfoods.lk, so this is a
@@ -80,6 +90,11 @@ export function MessageBubble({
         </p>
 
         {message.error && <p className="clear-both mt-1 text-2xs text-chilli">{message.error}</p>}
+        {message.transcription_status === 'failed' && (
+          <p className="clear-both mt-1 text-2xs text-wa-meta">
+            Could not transcribe — listen in WhatsApp or ask the customer to type it.
+          </p>
+        )}
       </div>
     </div>
   );

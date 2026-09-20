@@ -27,6 +27,7 @@ os.environ.update(
         "SUPABASE_ANON_KEY": "anon-key",
         "LLM_PROVIDER": "openrouter",
         "OPENROUTER_API_KEY": "sk-or-test",
+        "OPENAI_API_KEY": "sk-openai-test",
         "GEMINI_API_KEY": "gemini-key",
         "LLM_MODEL": "google/gemini-3.1-flash-lite",
         "BUSINESS_ID": "11111111-1111-1111-1111-111111111111",
@@ -73,5 +74,6 @@ def db_modules() -> tuple:
         db.messages,
         db.notes,
         db.orders,
+        db.payment_receipts,
         db.templates,
     )

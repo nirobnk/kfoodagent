@@ -44,6 +44,9 @@ export interface Message {
   wa_message_id: string | null;
   status: MessageStatus;
   error: string | null;
+  transcript: string | null;
+  transcription_status: 'pending' | 'completed' | 'failed' | null;
+  transcription_error: string | null;
   created_at: string;
 }
 

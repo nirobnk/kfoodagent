@@ -72,8 +72,8 @@ dashboard/         Next.js App Router + Tailwind
   components/ui/   the design system: HeatBars, Icon, Bits (Stat, Chip, …)
   lib/crm.ts       stage colours, wording and the small client-side helpers
 supabase/
-  migrations/      0001_init.sql .. 0010_payments.sql (init, rls, functions,
-                   catalog, inventory, pos, function grants, crm, payments)
+  migrations/      0001_init.sql .. 0011_voice_and_receipts.sql (init, rls,
+                   catalog, inventory, pos, crm, payments, voice and receipts)
   seed.sql         business row + message templates — run by hand
   seed_catalog.sql GENERATED: 90 product variants, business profile, 9 FAQs
 data/              kfood-catalog.json, kfood-images.json — exported from the kfoods.lk site
@@ -122,7 +122,7 @@ above.
 
 1. Create a project (region: Singapore is closest to Sri Lanka).
 2. SQL editor → run every file in `supabase/migrations/` in numeric order, `0001_init.sql`
-   through `0010_payments.sql`. (`supabase/setup.sql` is an older one-paste bundle and
+   through `0011_voice_and_receipts.sql`. (`supabase/setup.sql` is an older one-paste bundle and
    stops at `0004`; it is not enough on its own.)
 3. Edit the `vals` block at the top of `supabase/seed.sql`, run it, and copy the printed
    `business_id`.
@@ -208,6 +208,10 @@ the value, which silently breaks `LLM_PROVIDER`, `ENVIRONMENT` and `REQUIRE_AUTH
 | `SUPABASE_JWT_SECRET` | Legacy HS256 fallback, only if JWKS is not used |
 | `LLM_PROVIDER` | `openrouter` by default. Also `gemini`, `openai`, `anthropic` |
 | `OPENROUTER_API_KEY` | From https://openrouter.ai/keys |
+| `OPENAI_API_KEY` | Required to transcribe WhatsApp voice notes, even when the chat model uses OpenRouter or Gemini |
+| `VOICE_TRANSCRIPTION_MODEL` | OpenAI transcription model; defaults to `gpt-4o-mini-transcribe` |
+| `VOICE_MAX_BYTES` | Maximum downloaded voice-note size; defaults to 10 MB and cannot exceed 25 MB |
+| `VOICE_TRANSCRIPTION_TIMEOUT_SECONDS` | Per-request transcription timeout; defaults to 30 seconds |
 | `LLM_MODEL` | Routed id, e.g. `google/gemini-3.1-flash-lite`. **Must support tool calling** — without it the agent cannot look up prices |
 | `BUSINESS_ID` | The `businesses.id` from the seed |
 | `AUTO_RETURN_MINUTES` | Human takeover expires after this many quiet minutes (default 30) |

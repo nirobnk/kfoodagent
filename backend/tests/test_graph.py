@@ -144,6 +144,37 @@ async def test_the_current_message_is_not_duplicated_when_already_stored(env, mo
     assert bodies.count("one kimbap please") == 1
 
 
+async def test_completed_voice_transcript_reaches_model_once(env, monkeypatch):
+    env.seed(
+        "messages",
+        [
+            {
+                "id": "voice-1",
+                "business_id": BUSINESS_ID,
+                "contact_id": CONTACT["id"],
+                "direction": "in",
+                "sender": "customer",
+                "body": "Shin Ramyun dekak ona",
+                "message_type": "voice",
+                "transcript": "Shin Ramyun dekak ona",
+                "transcription_status": "completed",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ],
+    )
+    stub = install_llm(monkeypatch, [AIMessage(content="Sure!")])
+
+    await run_agent(
+        business_id=BUSINESS_ID,
+        contact=CONTACT,
+        incoming_text="Shin Ramyun dekak ona",
+    )
+
+    bodies = [str(getattr(m, "content", "")) for m in stub.seen[0]]
+    assert bodies.count("[voice transcript] Shin Ramyun dekak ona") == 1
+    assert "Shin Ramyun dekak ona" not in bodies
+
+
 async def test_an_llm_failure_hands_the_chat_to_a_human(env, monkeypatch):
     class Exploding:
         async def ainvoke(self, messages, config=None):
