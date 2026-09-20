@@ -28,7 +28,7 @@ export function MessageBubble({
   const failed = message.status === 'failed';
 
   return (
-    <div className={`flex ${mine ? 'justify-end' : 'justify-start'} ${startsRun ? 'mt-2' : ''}`}>
+    <div className={`flex px-2 ${mine ? 'justify-end' : 'justify-start'} ${startsRun ? 'mt-2' : ''}`}>
       <div
         className={`bubble bubble-${side} ${tail} ${failed ? 'ring-1 ring-chilli/40' : ''}`}
       >
@@ -52,7 +52,7 @@ export function MessageBubble({
             <img
               src={message.media_url}
               alt={message.body || 'photo'}
-              className="mb-1 max-h-60 w-auto rounded-md border border-black/5 object-cover"
+              className="mb-1.5 max-h-72 w-auto rounded-md border border-black/5 object-cover"
               loading="lazy"
             />
           </a>

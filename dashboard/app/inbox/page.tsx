@@ -127,10 +127,10 @@ export default function InboxPage() {
   const selected = contacts.find((contact) => contact.id === selectedId) ?? null;
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="flex h-full min-h-0 bg-wa-chat">
       <aside
-        className={`w-full border-r border-line bg-card md:w-[336px] ${
-          selected ? 'hidden md:block' : 'block'
+        className={`w-full border-r border-black/10 bg-card lg:w-[340px] xl:w-[390px] ${
+          selected ? 'hidden lg:block' : 'block'
         }`}
       >
         {loading ? (
@@ -153,7 +153,7 @@ export default function InboxPage() {
         )}
       </aside>
 
-      <main className={`min-w-0 flex-1 ${selected ? 'block' : 'hidden md:block'}`}>
+      <main className={`min-w-0 flex-1 ${selected ? 'block' : 'hidden lg:block'}`}>
         {selected ? (
           <ChatThread
             key={selected.id}
@@ -162,19 +162,25 @@ export default function InboxPage() {
             onBack={() => setSelectedId(null)}
           />
         ) : (
-          <div className="chat-bg flex h-full items-center justify-center p-6">
-            <div className="max-w-xs text-center">
-              <Icon name="inbox" className="mx-auto h-8 w-8 text-ink/25" />
-              <p className="mt-3 font-display text-base font-bold">Pick a chat</p>
-              <p className="mt-1 text-sm text-soy">
-                The robot icon means the agent is answering. The person icon means a staff member
-                has taken over and the agent is staying quiet.
+          <div className="chat-bg flex h-full items-center justify-center border-b-[6px] border-wa-green p-6">
+            <div className="max-w-sm text-center">
+              <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-wa-green/10 text-wa-dark">
+                <Icon name="inbox" className="h-9 w-9" />
+              </span>
+              <p className="mt-5 font-display text-xl font-bold tracking-tight">K FOOD WhatsApp</p>
+              <p className="mt-2 text-sm leading-6 text-soy">
+                Select a conversation to read messages and reply. Chats stay synced live while this
+                screen is open.
               </p>
+              <div className="mx-auto mt-4 flex w-fit items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-xs text-soy shadow-card">
+                <Icon name="bot" className="h-3.5 w-3.5 text-wa-green" />
+                The assistant can handle chats until you take over
+              </div>
               <Link
                 href="/customers"
-                className="mt-4 inline-flex text-sm font-medium text-chilli underline underline-offset-4"
+                className="mt-5 inline-flex text-sm font-semibold text-wa-dark underline underline-offset-4"
               >
-                Open the customer book instead
+                Open customer book
               </Link>
             </div>
           </div>

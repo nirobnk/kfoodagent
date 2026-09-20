@@ -48,7 +48,6 @@ const config: Config = {
           dark: '#A81A55',
           wash: '#FDEDF3',
         },
-
         /**
          * WhatsApp's own colours, and the one deliberate exception to the
          * palette above. They are scoped to the chat pane and used nowhere
@@ -62,15 +61,23 @@ const config: Config = {
          * what they sent, and nobody has to learn that.
          */
         wa: {
-          bg: '#EFEAE2',        // the chat wallpaper
-          panel: '#F0F2F5',     // header and composer bars
-          out: '#D9FDD3',       // our bubble
-          in: '#FFFFFF',        // theirs
+          bg: '#EFEAE2',
+          chat: '#EFEAE2',
+          panel: '#F0F2F5',
+          chrome: '#F0F2F5',
+          out: '#D9FDD3',
+          bubble: '#D9FDD3',
+          in: '#FFFFFF',
           divider: '#E9EDEF',
-          meta: '#667781',      // timestamps, ticks before they turn blue
-          tick: '#53BDEB',      // read
+          meta: '#667781',
+          tick: '#53BDEB',
+          blue: '#53BDEB',
           green: '#00A884',
           'green-dark': '#008069',
+          dark: '#075E54',
+          deep: '#064C45',
+          lime: '#25D366',
+          wash: '#E7F8F3',
         },
       },
       fontFamily: {
@@ -93,8 +100,9 @@ const config: Config = {
         // One shadow in the whole system, and it is barely there.
         card: '0 1px 2px rgba(23, 18, 26, 0.04)',
         // WhatsApp's bubble shadow: a single hairline, not a drop shadow.
-        bubble: '0 1px 0.5px rgba(11, 20, 26, 0.13)',
+        bubble: '0 1px 1px rgba(11, 20, 26, 0.13)',
         pop: '0 12px 32px -12px rgba(23, 18, 26, 0.28)',
+        panel: '0 8px 28px rgba(23, 18, 26, 0.07)',
       },
       keyframes: {
         rise: {
