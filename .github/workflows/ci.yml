@@ -42,3 +42,21 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: build-placeholder
           NEXT_PUBLIC_API_URL: http://localhost:8000
+
+  site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: for f in *.js build.mjs; do node --check "$f"; done
+      # The product pages, the price page and the sitemap are generated from
+      # products-data.js and committed. Rebuild them and fail if anything but
+      # the build date moved, which means someone edited the catalogue and
+      # forgot to run `node build.mjs`.
+      - run: node build.mjs
+      - run: git diff --exit-code -I '<lastmod>' -I 'Last updated <time' -- .

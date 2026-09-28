@@ -71,6 +71,12 @@ dashboard/         Next.js App Router + Tailwind
                    insights, products, inventory, login
   components/ui/   the design system: HeatBars, Icon, Bits (Stat, Chip, …)
   lib/crm.ts       stage colours, wording and the small client-side helpers
+site/              kfoods.lk — static HTML on Netlify
+  products-data.js the catalogue the site is built from
+  build.mjs        products-data.js -> product pages, price page, sitemap
+  cart.js          the cart; checkout builds the WhatsApp order message
+  pixel.js         Meta Pixel
+  rag-export/      the export data/kfood-catalog.json is copied from
 supabase/
   migrations/      0001_init.sql .. 0014_message_media.sql (init, rls,
                    catalog, inventory, pos, crm, voice, durable receipts,
@@ -89,7 +95,7 @@ scripts/
 ## The catalogue
 
 The source of truth is `data/kfood-catalog.json`, exported from the kfoods.lk static site
-(`static/kfood`). It carries, per product: brand, Korean name, category, pack size, heat
+(`site/`). It carries, per product: brand, Korean name, category, pack size, heat
 level (0–5), cooking time, short and long descriptions, serving suggestion, ingredients,
 allergens, nutrition, product URL, image, and three priced variants with SKUs.
 
@@ -105,7 +111,7 @@ allergens, nutrition, product URL, image, and three priced variants with SKUs.
 To refresh after the website changes:
 
 ```bash
-cp ../kfood/rag-export/kfood-rag-data.json data/kfood-catalog.json
+cp site/rag-export/kfood-rag-data.json data/kfood-catalog.json
 python3 scripts/build_seed.py          # rewrites supabase/seed_catalog.sql
 # then run supabase/seed_catalog.sql in Supabase — it upserts, so re-running is safe
 ```
@@ -521,6 +527,20 @@ Any new dashboard origin has to be added to `CORS_ORIGINS` on the backend, or ev
 request from it fails with nothing useful in the console.
 
 Then point the Meta webhook at `https://<backend-host>/webhook`.
+
+**Website — Netlify.** kfoods.lk lives in `site/`. The HTML is committed; after
+editing `products-data.js`, run `node build.mjs` in `site/` and commit what it
+regenerates — CI fails if the pages and the catalogue disagree. When Netlify is
+linked to this repo, set Base directory to `site`; `site/netlify.toml` then skips
+the build for any push that does not touch `site/`.
+
+Adding `site/` means one repo now feeds three hosts, and before the first push to
+`main` each needs a filter, or a website edit restarts the WhatsApp backend:
+
+* Railway — watch paths so only `backend/` changes deploy. Test it with a
+  site-only push: a wrong pattern silently stops *every* deploy (see above).
+* Cloudflare Pages — Settings → Build → Build watch paths: include `dashboard/*`.
+* Netlify — handled by the `ignore` command in `site/netlify.toml`.
 
 ---
 

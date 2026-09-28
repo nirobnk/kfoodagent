@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en-LK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Cart — K FOOD Sri Lanka | kfoods.lk</title>
+  <meta name="description" content="Review your Korean ramen order and check out via WhatsApp. No minimum order — island-wide delivery across Sri Lanka, pay by bank transfer.">
+  <link rel="canonical" href="https://kfoods.lk/cart.html">
+  <meta name="robots" content="noindex, follow">
+  <meta name="theme-color" content="#e0222b">
+  <link rel="icon" type="image/png" href="images/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&amp;family=IBM+Plex+Mono:wght@400;600&amp;family=Noto+Sans+KR:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=9">
+  <!-- Meta Pixel -->
+  <script src="pixel.js?v=9"></script>
+</head>
+<body>
+<noscript><img height="1" width="1" style="display:none" alt=""
+  src="https://www.facebook.com/tr?id=1453079580075970&amp;ev=PageView&amp;noscript=1"></noscript>
+
+
+  <header class="nav">
+    <a class="nav__brand" href="index.html" aria-label="K FOOD Sri Lanka — home">
+      <span class="nav__k">K</span>
+      <span class="nav__brand-text">
+        <span class="nav__food">fOOD</span>
+        <span class="nav__tag">Taste of Korean Food</span>
+      </span>
+    </a>
+    <nav class="nav__links" aria-label="Main">
+      <a href="index.html#shop">Shop</a>
+      <a href="korean-ramen-price-sri-lanka.html">Price list</a>
+      <a href="index.html#how">How to order</a>
+      <a href="index.html#faq">FAQ</a>
+      <a href="index.html#contact">Contact</a>
+    </nav>
+    <a class="btn btn--nav btn--cart" href="cart.html" aria-current="page">
+      Cart <span class="cart-badge" data-cart-count hidden>0</span>
+    </a>
+  </header>
+
+  <main class="cartpage" id="cart-root">
+    <div class="section__head">
+      <p class="eyebrow"><span lang="ko">장바구니</span> Your cart</p>
+      <h1 class="section__title">Almost at your door</h1>
+    </div>
+
+    <div id="cart-empty" class="cart-empty" hidden>
+      <p>Your cart is empty — the ramyeon shelf is this way.</p>
+      <a class="btn btn--red" href="index.html#shop">Browse the shop</a>
+    </div>
+
+    <div id="cart-summary" class="cart-layout" hidden>
+      <section class="cart-list" aria-label="Cart items">
+        <ul id="cart-lines" class="clines"></ul>
+
+        <dl class="cart-sums">
+          <div class="cart-sums__row">
+            <dt>Subtotal <span class="cart-sums__count" id="cart-items">(0 items)</span></dt>
+            <dd id="cart-subtotal">LKR 0</dd>
+          </div>
+          <div class="cart-sums__row">
+            <dt>Delivery</dt>
+            <dd id="cart-delivery">LKR 400</dd>
+          </div>
+          <div class="cart-sums__row cart-sums__row--total">
+            <dt>Total</dt>
+            <dd id="cart-total">LKR 0</dd>
+          </div>
+        </dl>
+        <p class="cart-shipnote" id="cart-shipnote">Delivery is a flat LKR 400 island-wide, free on orders over LKR 5,000.</p>
+      </section>
+
+      <section class="checkout" aria-label="Delivery details">
+        <h2 class="checkout__title">Delivery details</h2>
+        <form id="checkout-form" class="checkout__form">
+          <div class="field-row">
+            <label class="field">
+              <span class="field__label">Full name *</span>
+              <input id="f-name" type="text" required autocomplete="name" placeholder="Your name">
+            </label>
+            <label class="field">
+              <span class="field__label">Phone (WhatsApp) *</span>
+              <input id="f-phone" type="tel" required autocomplete="tel" placeholder="07X XXX XXXX" pattern="[0-9+ ]{9,15}">
+            </label>
+          </div>
+          <label class="field">
+            <span class="field__label">Address *</span>
+            <input id="f-address" type="text" required autocomplete="street-address" placeholder="House no & street">
+          </label>
+          <div class="field-row">
+            <label class="field">
+              <span class="field__label">City / town *</span>
+              <input id="f-city" type="text" required autocomplete="address-level2" placeholder="e.g. Colombo">
+            </label>
+            <label class="field">
+              <span class="field__label">District *</span>
+              <select id="f-district" required>
+                <option value="" selected disabled>Select district</option>
+                <option>Ampara</option><option>Anuradhapura</option><option>Badulla</option>
+                <option>Batticaloa</option><option>Colombo</option><option>Galle</option>
+                <option>Gampaha</option><option>Hambantota</option><option>Jaffna</option>
+                <option>Kalutara</option><option>Kandy</option><option>Kegalle</option>
+                <option>Kilinochchi</option><option>Kurunegala</option><option>Mannar</option>
+                <option>Matale</option><option>Matara</option><option>Monaragala</option>
+                <option>Mullaitivu</option><option>Nuwara Eliya</option><option>Polonnaruwa</option>
+                <option>Puttalam</option><option>Ratnapura</option><option>Trincomalee</option>
+                <option>Vavuniya</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="field">
+            <span class="field__label">Postal code (optional)</span>
+            <input id="f-postal" type="text" autocomplete="postal-code" inputmode="numeric" placeholder="e.g. 60000" pattern="[0-9]{4,5}">
+          </label>
+
+          <fieldset class="field pay">
+            <legend class="field__label">Payment method *</legend>
+            <div class="pay__opts">
+              <!-- Cash on delivery is hidden for now — restore this line and drop the
+                   `checked` below to bring it back:
+              <label class="pay__opt"><input type="radio" name="f-pay" value="Cash on Delivery" checked> <span>Cash on delivery</span></label>
+              -->
+              <label class="pay__opt"><input type="radio" name="f-pay" value="Bank Transfer" checked> <span>Bank transfer</span></label>
+            </div>
+
+            <div class="bank">
+              <p class="bank__lead">Transfer the total to:</p>
+              <dl class="bank__rows">
+                <div class="bank__row"><dt>Bank</dt><dd>Hatton National Bank (HNB)</dd></div>
+                <div class="bank__row"><dt>Branch</dt><dd>Alawwa</dd></div>
+                <div class="bank__row"><dt>Account name</dt><dd>Kumarasinghe H G B N</dd></div>
+                <div class="bank__row"><dt>Account no.</dt><dd><span class="bank__acc">123020163895</span></dd></div>
+              </dl>
+              <p class="bank__note">Pay once we confirm your total on WhatsApp, then send us the receipt in the same chat.</p>
+            </div>
+          </fieldset>
+
+          <label class="field">
+            <span class="field__label">Notes (optional)</span>
+            <textarea id="f-notes" rows="2" placeholder="Landmark, delivery time, etc."></textarea>
+          </label>
+
+          <button id="checkout-btn" type="submit" class="btn btn--red checkout__btn" disabled aria-disabled="true">
+            <span>Checkout on WhatsApp</span><span class="checkout__btn-total" id="checkout-btn-total"></span>
+          </button>
+          <p class="checkout__note">
+            Checkout opens WhatsApp with your order pre-filled — nothing is charged
+            on this website. We confirm stock and the delivery date, then you transfer
+            the total to the account above and send us the receipt.
+          </p>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__brand">
+      <span class="footer__k">K</span>
+      <span class="footer__food">fOOD</span>
+    </div>
+    <p class="footer__tag">Taste of Korean Food · Sri Lanka</p>
+    <p class="footer__links">
+      <a href="index.html#shop">Shop Korean ramen</a> ·
+      <a href="korean-ramen-price-sri-lanka.html">Ramen price list</a> ·
+      <a href="index.html#faq">Delivery FAQ</a> ·
+      <a href="https://wa.me/94772953107" target="_blank" rel="noopener">WhatsApp us</a>
+    </p>
+    <p class="footer__legal">© 2026 K FOOD (kfoods.lk) · Online Korean food store · Sri Lanka · Island-wide delivery.</p>
+  </footer>
+
+  <script src="products-data.js?v=9" defer></script>
+  <script src="cart.js?v=9" defer></script>
+</body>
+</html>
