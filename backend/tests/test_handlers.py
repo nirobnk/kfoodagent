@@ -11,7 +11,8 @@ import handlers
 import outbound
 from agent.graph import AgentReply
 from tests.conftest import BUSINESS_ID, db_modules
-from tests.fakes import FakeSupabase, FakeWhatsApp
+from tests.fakes import FakeSupabase, FakeWhatsApp, seed_kfood
+from vision import ImageAnalysis
 from whatsapp import DownloadedMedia
 from whatsapp.parser import InboundMessage
 
@@ -243,6 +244,66 @@ async def test_voice_transcription_failure_keeps_message_and_replies(wired, monk
     stored = next(m for m in fake.rows("messages") if m["direction"] == "in")
     assert stored["transcription_status"] == "failed"
     assert "RuntimeError" in stored["transcription_error"]
+
+
+async def test_product_photo_is_described_before_agent_runs(wired, monkeypatch):
+    fake, wa, calls = wired
+    seed_kfood(fake, BUSINESS_ID)
+    wa.media_downloads["media-photo"] = DownloadedMedia(
+        content=b"jpeg bytes", mime_type="image/jpeg", filename="photo.jpg"
+    )
+    seen_catalogue: list[str] = []
+
+    async def describe(media, *, catalogue):
+        assert media.filename == "photo.jpg"
+        seen_catalogue.extend(catalogue)
+        return ImageAnalysis(
+            kind="product",
+            products=["Shin Ramyun Black"],
+            description="A red and black Nongshim noodle packet.",
+        )
+
+    monkeypatch.setattr(handlers, "describe_image", describe)
+
+    await handlers.process_inbound(
+        inbound("do you have this?", "wamid.PHOTO", mtype="image",
+                media_id="media-photo", media_mime="image/jpeg"),
+        BUSINESS_ID,
+    )
+
+    assert calls == ["do you have this?"], "the caption stays the customer's words"
+    assert wa.downloaded_media_ids == ["media-photo"]
+    assert "Shin Ramyun Original" in seen_catalogue
+    assert len(seen_catalogue) == len(set(seen_catalogue)), "one name per product"
+    stored = next(m for m in fake.rows("messages") if m["direction"] == "in")
+    assert stored["body"] == "do you have this?"
+    assert stored["image_analysis_status"] == "completed"
+    assert stored["image_description"] == (
+        "Product photo: Shin Ramyun Black. A red and black Nongshim noodle packet."
+    )
+
+
+async def test_image_analysis_failure_keeps_message_and_replies(wired, monkeypatch):
+    fake, wa, calls = wired
+    wa.media_downloads["media-photo"] = DownloadedMedia(
+        content=b"jpeg bytes", mime_type="image/jpeg", filename="photo.jpg"
+    )
+
+    async def fail(_media, *, catalogue):
+        raise RuntimeError("vision service unavailable")
+
+    monkeypatch.setattr(handlers, "describe_image", fail)
+
+    await handlers.process_inbound(
+        inbound(None, "wamid.BADPHOTO", mtype="image", media_id="media-photo"),
+        BUSINESS_ID,
+    )
+
+    assert calls == [""]
+    assert wa.texts, "the agent still answers a photo it could not read"
+    stored = next(m for m in fake.rows("messages") if m["direction"] == "in")
+    assert stored["image_analysis_status"] == "failed"
+    assert "RuntimeError" in stored["image_analysis_error"]
 
 
 async def test_payment_report_creates_separate_receipt_record(wired, monkeypatch):

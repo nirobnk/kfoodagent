@@ -65,6 +65,16 @@ def _to_lc_message(row: Mapping[str, Any]) -> Any:
         # Make provenance explicit so the model does not mistake speech-to-text
         # for a caption or claim it heard details that were not transcribed.
         body = f"[{kind} transcript] {transcript}"
+    elif (
+        kind == "image"
+        and row.get("direction") == "in"
+        and row.get("image_analysis_status") == "completed"
+        and (row.get("image_description") or "").strip()
+    ):
+        # What the photo shows is a model's reading of it, not the customer's
+        # words; the caption, when there is one, follows as what they wrote.
+        seen = (row.get("image_description") or "").strip()
+        body = f"[image — what it shows: {seen}]" + (f" Caption: {body}" if body else "")
     elif not body:
         # An attachment with no caption. Spelled out rather than left as an
         # empty turn, because the commonest one in this shop is a bank slip

@@ -72,8 +72,9 @@ dashboard/         Next.js App Router + Tailwind
   components/ui/   the design system: HeatBars, Icon, Bits (Stat, Chip, …)
   lib/crm.ts       stage colours, wording and the small client-side helpers
 supabase/
-  migrations/      0001_init.sql .. 0012_receipt_storage.sql (init, rls,
-                   catalog, inventory, pos, crm, voice and durable receipts)
+  migrations/      0001_init.sql .. 0013_image_understanding.sql (init, rls,
+                   catalog, inventory, pos, crm, voice, durable receipts,
+                   customer photo descriptions)
   seed.sql         business row + message templates — run by hand
   seed_catalog.sql GENERATED: 90 product variants, business profile, 9 FAQs
 data/              kfood-catalog.json, kfood-images.json — exported from the kfoods.lk site
@@ -122,7 +123,7 @@ above.
 
 1. Create a project (region: Singapore is closest to Sri Lanka).
 2. SQL editor → run every file in `supabase/migrations/` in numeric order, `0001_init.sql`
-   through `0012_receipt_storage.sql`. (`supabase/setup.sql` is an older one-paste bundle and
+   through `0013_image_understanding.sql`. (`supabase/setup.sql` is an older one-paste bundle and
    stops at `0004`; it is not enough on its own.)
 3. Edit the `vals` block at the top of `supabase/seed.sql`, run it, and copy the printed
    `business_id`.
@@ -213,6 +214,9 @@ the value, which silently breaks `LLM_PROVIDER`, `ENVIRONMENT` and `REQUIRE_AUTH
 | `VOICE_MAX_BYTES` | Maximum downloaded voice-note size; defaults to 10 MB and cannot exceed 25 MB |
 | `VOICE_MAX_DURATION_SECONDS` | Hard voice-note duration ceiling; defaults to and cannot exceed 120 seconds |
 | `VOICE_TRANSCRIPTION_TIMEOUT_SECONDS` | Per-request transcription timeout; defaults to 30 seconds |
+| `IMAGE_ANALYSIS_MODEL` | OpenAI vision model that reads customer photos so the agent can find the product shown; defaults to `gpt-4o-mini` and uses `OPENAI_API_KEY` |
+| `IMAGE_MAX_BYTES` | Maximum downloaded photo size; defaults to 5 MB and cannot exceed 10 MB |
+| `IMAGE_ANALYSIS_TIMEOUT_SECONDS` | Per-request image analysis timeout; defaults to 30 seconds |
 | `RECEIPT_MAX_BYTES` | Maximum receipt image/PDF size copied into private Supabase Storage; fixed maximum 10 MB |
 | `LLM_MODEL` | Routed id, e.g. `google/gemini-3.1-flash-lite`. **Must support tool calling** — without it the agent cannot look up prices |
 | `BUSINESS_ID` | The `businesses.id` from the seed |

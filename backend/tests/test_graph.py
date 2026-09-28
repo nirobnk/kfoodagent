@@ -175,6 +175,35 @@ async def test_completed_voice_transcript_reaches_model_once(env, monkeypatch):
     assert "Shin Ramyun dekak ona" not in bodies
 
 
+async def test_image_description_reaches_model_with_caption(env, monkeypatch):
+    env.seed(
+        "messages",
+        [
+            {
+                "id": "photo-1",
+                "business_id": BUSINESS_ID,
+                "contact_id": CONTACT["id"],
+                "direction": "in",
+                "sender": "customer",
+                "body": "price?",
+                "message_type": "image",
+                "image_description": "Product photo: Shin Ramyun Black.",
+                "image_analysis_status": "completed",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ],
+    )
+    stub = install_llm(monkeypatch, [AIMessage(content="Rs. 650!")])
+
+    await run_agent(business_id=BUSINESS_ID, contact=CONTACT, incoming_text="price?")
+
+    bodies = [str(getattr(m, "content", "")) for m in stub.seen[0]]
+    assert bodies.count(
+        "[image — what it shows: Product photo: Shin Ramyun Black.] Caption: price?"
+    ) == 1
+    assert "price?" not in bodies
+
+
 async def test_an_llm_failure_hands_the_chat_to_a_human(env, monkeypatch):
     class Exploding:
         async def ainvoke(self, messages, config=None):

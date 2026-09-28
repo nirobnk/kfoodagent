@@ -271,6 +271,9 @@ class FakeSupabase:
                 "transcript": None,
                 "transcription_status": None,
                 "transcription_error": None,
+                "image_description": None,
+                "image_analysis_status": None,
+                "image_analysis_error": None,
             },
             "payment_receipts": {
                 "order_id": None,
