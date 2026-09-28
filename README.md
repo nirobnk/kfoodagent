@@ -71,6 +71,15 @@ dashboard/         Next.js App Router + Tailwind
                    insights, products, inventory, login
   components/ui/   the design system: HeatBars, Icon, Bits (Stat, Chip, …)
   lib/crm.ts       stage colours, wording and the small client-side helpers
+site/              kfoods.lk — Next.js, exported to static HTML on Netlify
+  products-data.js the catalogue the site is built from (plain JS: the menu
+                   card loads it with a <script> tag)
+  app/             home, cart, price list, products/[handle], sitemap, 404
+  components/      the page parts; the cart, buy box and filters are client
+  lib/             catalog.ts, seo.ts (JSON-LD), cart.ts (the WhatsApp order
+                   message), pixel.ts (Meta Pixel)
+  seo/baseline.json what Google reads on every page; CI holds builds to it
+  rag-export/      the export data/kfood-catalog.json is copied from
 supabase/
   migrations/      0001_init.sql .. 0014_message_media.sql (init, rls,
                    catalog, inventory, pos, crm, voice, durable receipts,
@@ -89,7 +98,7 @@ scripts/
 ## The catalogue
 
 The source of truth is `data/kfood-catalog.json`, exported from the kfoods.lk static site
-(`static/kfood`). It carries, per product: brand, Korean name, category, pack size, heat
+(`site/`). It carries, per product: brand, Korean name, category, pack size, heat
 level (0–5), cooking time, short and long descriptions, serving suggestion, ingredients,
 allergens, nutrition, product URL, image, and three priced variants with SKUs.
 
@@ -105,7 +114,7 @@ allergens, nutrition, product URL, image, and three priced variants with SKUs.
 To refresh after the website changes:
 
 ```bash
-cp ../kfood/rag-export/kfood-rag-data.json data/kfood-catalog.json
+cp site/rag-export/kfood-rag-data.json data/kfood-catalog.json
 python3 scripts/build_seed.py          # rewrites supabase/seed_catalog.sql
 # then run supabase/seed_catalog.sql in Supabase — it upserts, so re-running is safe
 ```
@@ -491,9 +500,11 @@ replica, no serverless sleep, at `https://kfoodagent-dimuthu-production.up.railw
 
 `railway.json` is **not** read: Config as Code is closed to services created after
 2026-08-28, so builder, start command and healthcheck are set in the service UI.
-Root Directory is `backend` and watch paths are **cleared** — watch paths resolve
-against the Root Directory, so `/backend/**` matches nothing and pushes silently
-stop deploying. Leave them cleared.
+Root Directory is `/backend` and the watch path is `/backend/**`. Railway matches
+watch paths from the repo root even when a Root Directory is set, so that is the
+right form — and the deploy history proves it: merges that touched only
+`dashboard/` show as SKIPPED, every merge that touched `backend/` deployed. An
+earlier note here said the pattern "matched nothing"; it was wrong.
 
 A push to `main` deploys. `main.py:lifespan` refuses to start in production if
 `check_production_readiness()` returns anything, so a container that booted has
@@ -521,6 +532,40 @@ Any new dashboard origin has to be added to `CORS_ORIGINS` on the backend, or ev
 request from it fails with nothing useful in the console.
 
 Then point the Meta webhook at `https://<backend-host>/webhook`.
+
+**Website — Netlify.** kfoods.lk lives in `site/`, a Next.js app exported to
+plain HTML (`output: 'export'`) at exactly the URLs the hand-built site had:
+`/cart.html`, `/products/<handle>.html`. In Netlify set Base directory to
+`site`; `site/netlify.toml` supplies the build (`npm run build` → `out/`) and
+skips it for any push that does not touch `site/`. A broken build is not
+deployed — Netlify keeps serving the last good one.
+
+```bash
+cd site
+npm run dev                  # http://localhost:3000 — .html URLs work here too
+npm run build && npm run preview   # the exported site, as Netlify serves it
+```
+
+Three things the site must keep, because people depend on them: the
+`kfood_cart_v1` localStorage key (customers' carts), the WhatsApp order message
+in `lib/cart.ts` character for character (staff and the agent read it — the
+agent recognises "NEW ORDER — kfoods.lk"), and plain `<a>` links rather than
+`<Link>` (one full page load per page, so the Meta Pixel counts one PageView).
+
+`npm run seo:check` compares every page's title, meta tags, canonical,
+JSON-LD, headings, text, links and images with `seo/baseline.json`, and CI
+runs it. The baseline was first taken from the static site this replaced.
+After an intended change — a new price, new copy — run `npm run seo:baseline`
+and commit the diff, which shows exactly what Google will see change.
+
+One repo feeds three hosts, and each builds only what changed:
+
+* Railway — the `/backend/**` watch path (above): a website edit never restarts
+  the WhatsApp backend.
+* Netlify — the `ignore` command in `site/netlify.toml`.
+* Cloudflare Pages — no filter yet, so any push rebuilds the dashboard. That is
+  harmless (the output is identical) but wasted build minutes; add
+  Settings → Build → Build watch paths → Include paths: `dashboard/*`.
 
 ---
 

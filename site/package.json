@@ -1,0 +1,28 @@
+{
+  "name": "kfoods-site",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "preview": "python3 -m http.server 8000 --directory out",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "seo:check": "node scripts/seo-snapshot.mjs check out",
+    "seo:baseline": "node scripts/seo-snapshot.mjs baseline out"
+  },
+  "dependencies": {
+    "next": "16.3.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "cheerio": "^1.1.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.6",
+    "typescript": "^5"
+  }
+}

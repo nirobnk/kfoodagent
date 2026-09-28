@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="K FOOD Sri Lanka product menu with current single, 5 pack and carton prices.">
+  <title>K FOOD — Product Menu</title>
+  <link rel="stylesheet" href="menu-card.css">
+</head>
+<body>
+  <main class="menu" aria-labelledby="menu-title">
+    <header class="menu__header">
+      <div class="brand" aria-label="K FOOD — Taste of Korean Food">
+        <span class="brand__mark">K</span>
+        <span class="brand__copy">
+          <strong>K FOOD</strong>
+          <small>Taste of Korean Food</small>
+        </span>
+      </div>
+
+      <div class="menu__title-wrap">
+        <p class="menu__eyebrow"><span lang="ko">한국의 맛</span> · The taste of Korea</p>
+        <h1 id="menu-title">Our Menu</h1>
+        <p>Korean ramyeon, cup noodles &amp; drinks</p>
+      </div>
+
+      <div class="menu__order">
+        <strong>ORDER ONLINE</strong>
+        <span>kfoods.lk</span>
+        <span>WhatsApp 077 295 3107</span>
+      </div>
+    </header>
+
+    <div class="menu__legend" aria-label="Price guide">
+      <span><i class="dot dot--red"></i> Instant noodles</span>
+      <span><i class="dot dot--gold"></i> Cup noodles</span>
+      <span><i class="dot dot--green"></i> K-Drinks</span>
+      <strong>All prices in LKR</strong>
+    </div>
+
+    <section class="product-grid" id="product-grid" aria-label="Product menu"></section>
+
+    <footer class="menu__footer">
+      <p><strong>Island-wide delivery</strong> · Flat LKR 400 · Free delivery on orders over LKR 5,000</p>
+      <p>Stock and prices may change · Confirm availability on WhatsApp</p>
+    </footer>
+  </main>
+
+  <script src="../products-data.js"></script>
+  <script>
+    (function () {
+      var grid = document.getElementById('product-grid');
+      var categoryClass = {
+        'Instant Noodles': 'noodles',
+        'Cup Noodles': 'cups',
+        'Beverages': 'drinks'
+      };
+
+      function money(value) {
+        return Number(value).toLocaleString('en-US');
+      }
+
+      KFOOD_PRODUCTS.forEach(function (product, index) {
+        var single = product.variants[0];
+        var fivePack = product.variants[1];
+        var carton = product.variants[2];
+        var article = document.createElement('article');
+        article.className = 'product product--' + categoryClass[product.category];
+        article.innerHTML =
+          '<span class="product__number">' + String(index + 1).padStart(2, '0') + '</span>' +
+          '<div class="product__media"><img src="../' + product.image + '" alt="' + product.brand + ' ' + product.name + ' ' + product.pack + '"></div>' +
+          '<div class="product__copy">' +
+            '<p class="product__meta">' + product.brand + ' · ' + product.pack + '</p>' +
+            '<h2>' + product.name + '</h2>' +
+            '<p class="product__price"><span>' + single.label + '</span><strong>' + money(single.price) + '</strong></p>' +
+            '<p class="product__bulk"><span>' + fivePack.label + ' <b>' + money(fivePack.price) + '</b></span><span>' + carton.label + ' <b>' + money(carton.price) + '</b></span></p>' +
+          '</div>';
+        grid.appendChild(article);
+      });
+    }());
+  </script>
+</body>
+</html>

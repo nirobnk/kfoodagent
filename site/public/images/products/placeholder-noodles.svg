@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="Product photo coming soon">
+  <rect width="600" height="600" fill="#f6efe6"/>
+  <g transform="translate(300 270)">
+    <path d="M-130 -10 h260 a10 10 0 0 1 10 10 c0 65 -55 118 -140 118 c-85 0 -140 -53 -140 -118 a10 10 0 0 1 10 -10 z" fill="#e0222b"/>
+    <path d="M-130 -10 h260 a10 10 0 0 1 10 10 c0 10 -2 20 -5 29 h-270 c-3 -9 -5 -19 -5 -29 a10 10 0 0 1 10 -10 z" fill="#b3121c"/>
+    <g stroke="#e8a33d" stroke-width="10" stroke-linecap="round" fill="none">
+      <path d="M-80 -30 c0 -40 30 -55 30 -90"/>
+      <path d="M0 -30 c0 -40 -25 -55 -25 -90"/>
+      <path d="M80 -30 c0 -40 20 -55 20 -90"/>
+    </g>
+    <path d="M60 -150 l90 -60 M60 -150 l96 -38" stroke="#17120f" stroke-width="9" stroke-linecap="round"/>
+  </g>
+  <text x="300" y="470" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" letter-spacing="4" fill="#17120f" opacity="0.55">PHOTO COMING SOON</text>
+  <text x="300" y="510" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#c9821c">라면 · K FOOD</text>
+</svg>

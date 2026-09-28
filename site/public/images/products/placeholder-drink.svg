@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="Product photo coming soon">
+  <rect width="600" height="600" fill="#f6efe6"/>
+  <g transform="translate(300 280)">
+    <path d="M-60 -160 h120 v30 c0 20 18 26 18 55 v170 a18 18 0 0 1 -18 18 h-120 a18 18 0 0 1 -18 -18 v-170 c0 -29 18 -35 18 -55 z" fill="#e8a33d"/>
+    <path d="M-60 -160 h120 v30 c0 8 3 14 7 21 h-134 c4 -7 7 -13 7 -21 z" fill="#c9821c"/>
+    <rect x="-52" y="-190" width="104" height="30" rx="8" fill="#e0222b"/>
+    <rect x="-56" y="-35" width="112" height="90" rx="10" fill="#fffdf9"/>
+    <text x="0" y="25" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="bold" font-size="38" fill="#e0222b">음료</text>
+  </g>
+  <text x="300" y="480" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" letter-spacing="4" fill="#17120f" opacity="0.55">PHOTO COMING SOON</text>
+  <text x="300" y="520" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#c9821c">K-DRINKS · K FOOD</text>
+</svg>

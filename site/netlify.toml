@@ -1,0 +1,39 @@
+# K FOOD — Netlify config
+
+# The site lives in site/ of the kfoodagent repo, beside backend/ and
+# dashboard/. In the Netlify UI set Base directory = site; this file is then
+# read from here and every path below is relative to it.
+#
+# Next.js prerenders every page into out/ as plain HTML at the URLs Google
+# already knows (/cart.html, /products/<handle>.html). This changes the
+# failure mode: before, the committed HTML always deployed; now a broken
+# build is not deployed and Netlify keeps serving the previous one.
+#
+# ignore: a push that touches only backend/ or dashboard/ must not redeploy
+# the shop. Exit 0 = nothing changed under site/, skip the build.
+[build]
+  command = "npm run build"
+  publish = "out"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ."
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Next.js puts a content hash in every file name under /_next/static, so a
+# deploy produces new names and these can be cached for good.
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# www -> apex
+[[redirects]]
+  from = "https://www.kfoods.lk/*"
+  to = "https://kfoods.lk/:splat"
+  status = 301
+  force = true
