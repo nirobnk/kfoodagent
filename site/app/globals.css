@@ -1065,6 +1065,10 @@ section { padding: var(--section-y) var(--pad-x); }
 .pricecontent .section__head { margin-left: 0; }
 
 .pricetable-wrap {
+  /* The containing block for the table's .visually-hidden header. Without it
+     that absolutely positioned label escapes the scroll box and makes the
+     whole page 805px wide on a phone. */
+  position: relative;
   overflow-x: auto;
   background: var(--kf-white);
   border: 1px solid rgba(23, 18, 15, 0.14);

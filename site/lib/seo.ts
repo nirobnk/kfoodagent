@@ -8,7 +8,15 @@ import { fmt } from "./format";
 /* Merchant-listing facts used in the Product JSON-LD.
    Keep these in sync with the visible Delivery + FAQ copy. */
 const PRICE_VALID_FROM = "2026-08-26";
-const PRICE_VALID_UNTIL = "2026-12-31";
+
+/* A year from the build. A fixed date expires on a day nobody is watching,
+   and Google then treats every offer as stale. Every deploy moves this
+   forward; `npm run seo:check` fails if it is ever within 60 days. */
+const PRICE_VALID_UNTIL = (() => {
+  const d = new Date();
+  d.setUTCFullYear(d.getUTCFullYear() + 1);
+  return d.toISOString().slice(0, 10);
+})();
 
 const SHIPPING_DETAILS = {
   "@type": "OfferShippingDetails",

@@ -13,6 +13,9 @@
 
    Deliberately ignored, because they are not content:
      - the build date ("Last updated", sitemap lastmod)
+     - the exact Offer priceValidUntil, which rolls a year ahead on every
+       build. Instead it must be at least 60 days away, or the check fails:
+       expired offer markup is how products drop out of Google's listings.
      - scripts and stylesheets that belong to the framework, and the empty
        <div hidden> Next.js puts at the top of <body>
      - rel=preload hints: they change how fast a page loads, not what it
@@ -69,10 +72,22 @@ function pageUrl(page) {
   return page === "index.html" ? `${SITE}/` : `${SITE}/${page}`;
 }
 
+const MIN_VALID_DAYS = 60;
+
+function validUntil(date) {
+  const days = (Date.parse(date) - Date.now()) / 86_400_000;
+  return days >= MIN_VALID_DAYS
+    ? `<at least ${MIN_VALID_DAYS} days ahead>`
+    : `EXPIRES ${date} — under ${MIN_VALID_DAYS} days away`;
+}
+
 function canonicalJson(v) {
   if (Array.isArray(v)) return v.map(canonicalJson);
   if (v && typeof v === "object") {
-    return Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonicalJson(v[k])]));
+    return Object.fromEntries(Object.keys(v).sort().map((k) => [
+      k,
+      k === "priceValidUntil" && typeof v[k] === "string" ? validUntil(v[k]) : canonicalJson(v[k])
+    ]));
   }
   return v;
 }
