@@ -90,6 +90,13 @@ export function MessageBubble({
         </p>
 
         {message.error && <p className="clear-both mt-1 text-2xs text-chilli">{message.error}</p>}
+        {!mine && message.image_analysis_status === 'completed' && message.image_description && (
+          // What the agent was told the photo shows. Worth a glance before
+          // trusting its reply: this is a model's reading, not the customer's.
+          <p className="clear-both mt-1 text-2xs text-wa-meta">
+            Photo read as: {message.image_description}
+          </p>
+        )}
         {message.transcription_status === 'failed' && (
           <p className="clear-both mt-1 text-2xs text-wa-meta">
             Could not transcribe — listen in WhatsApp or ask the customer to type it.

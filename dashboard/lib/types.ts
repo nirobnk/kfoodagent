@@ -47,6 +47,9 @@ export interface Message {
   transcript: string | null;
   transcription_status: 'pending' | 'completed' | 'failed' | null;
   transcription_error: string | null;
+  image_description: string | null;
+  image_analysis_status: 'pending' | 'completed' | 'failed' | null;
+  image_analysis_error: string | null;
   created_at: string;
 }
 

@@ -35,6 +35,7 @@ async def save(
     transcript: str | None = None,
     transcription_status: str | None = None,
     transcription_error: str | None = None,
+    image_analysis_status: str | None = None,
     created_at: datetime | None = None,
 ) -> dict[str, Any] | None:
     """Insert a message.
@@ -58,6 +59,7 @@ async def save(
         "transcript": transcript,
         "transcription_status": transcription_status,
         "transcription_error": transcription_error,
+        "image_analysis_status": image_analysis_status,
     }
     if created_at is not None:
         payload["created_at"] = created_at.astimezone(timezone.utc).isoformat()
@@ -118,6 +120,42 @@ async def fail_transcription(message_id: str, error: str) -> None:
     )
 
 
+async def complete_image_analysis(message_id: str, description: str) -> None:
+    """Persist what the photo shows. The caption in `body` is left as written."""
+    clean = description.strip()
+    if not clean:
+        raise ValueError("image description cannot be empty")
+    db = await get_db()
+    await (
+        db.table(TABLE)
+        .update(
+            {
+                "image_description": clean,
+                "image_analysis_status": "completed",
+                "image_analysis_error": None,
+            }
+        )
+        .eq("id", message_id)
+        .execute()
+    )
+
+
+async def fail_image_analysis(message_id: str, error: str) -> None:
+    """Record a safe diagnostic while leaving the original message intact."""
+    db = await get_db()
+    await (
+        db.table(TABLE)
+        .update(
+            {
+                "image_analysis_status": "failed",
+                "image_analysis_error": (error or "image analysis failed")[:500],
+            }
+        )
+        .eq("id", message_id)
+        .execute()
+    )
+
+
 async def update_status(wa_message_id: str, status: str, error: str | None = None) -> None:
     """Apply a delivery receipt. Never downgrades read -> delivered -> sent."""
     rank = {"queued": 0, "sent": 1, "delivered": 2, "read": 3, "failed": 4}
@@ -147,7 +185,8 @@ async def history(contact_id: str, limit: int = 10) -> list[dict[str, Any]]:
     res = (
         await db.table(TABLE)
         .select(
-            "direction,sender,body,message_type,transcript,transcription_status,created_at"
+            "direction,sender,body,message_type,transcript,transcription_status,"
+            "image_description,image_analysis_status,created_at"
         )
         .eq("contact_id", contact_id)
         .order("created_at", desc=True)

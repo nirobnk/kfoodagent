@@ -22,6 +22,7 @@ import outbound
 from agent import run_agent
 from config import settings
 from transcription import transcribe_audio
+from vision import describe_image
 from whatsapp import InboundMessage, StatusUpdate, get_client
 
 log = logging.getLogger(__name__)
@@ -86,6 +87,9 @@ async def _process(message: InboundMessage, business_id: str) -> None:
         transcription_status=(
             "pending" if message.type in {"audio", "voice"} and message.media_id else None
         ),
+        image_analysis_status=(
+            "pending" if message.type == "image" and message.media_id else None
+        ),
         created_at=message.timestamp,
     )
     if saved is None:
@@ -109,6 +113,12 @@ async def _process(message: InboundMessage, business_id: str) -> None:
     incoming_text = message.text or ""
     if message.type in {"audio", "voice"} and message.media_id:
         incoming_text = await _transcribe_voice(message, str(saved["id"]), client)
+    elif message.type == "image" and message.media_id:
+        # The description lands on the message row, and the agent reads it
+        # from history next to the caption. incoming_text stays the caption:
+        # it is what the customer wrote, and the model's view of the photo
+        # must not be passed off as their words.
+        await _describe_image(message, str(saved["id"]), business_id, client)
 
     if contact.get("human_takeover"):
         # The agent stays out of it — but silence is not a neutral act. A
@@ -258,6 +268,55 @@ async def _transcribe_voice(
             extra={"message_id": message_id, "error_type": type(exc).__name__},
         )
         return message.text or ""
+
+
+async def _describe_image(
+    message: InboundMessage, message_id: str, business_id: str, client: Any
+) -> None:
+    """Record what the photo shows while making analysis failure non-fatal.
+
+    On failure the agent sees the photo exactly as it did before this
+    existed — an attachment it cannot open — and asks which product it is.
+    """
+    if not settings.image_analysis_configured:
+        error = "image analysis is not configured"
+        await db.messages.fail_image_analysis(message_id, error)
+        log.warning(error, extra={"message_id": message_id})
+        return
+
+    try:
+        media = await client.download_media(
+            str(message.media_id), max_bytes=settings.image_max_bytes
+        )
+        catalogue = await _catalogue_names(business_id)
+        analysis = await describe_image(media, catalogue=catalogue)
+        await db.messages.complete_image_analysis(message_id, analysis.as_text())
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"[:500]
+        await db.messages.fail_image_analysis(message_id, error)
+        log.warning(
+            "image analysis failed",
+            extra={"message_id": message_id, "error_type": type(exc).__name__},
+        )
+
+
+async def _catalogue_names(business_id: str) -> list[str]:
+    """Product names the vision model should match a photo against.
+
+    A missing list only makes the match less exact, so a catalogue read that
+    fails does not stop the photo being described.
+    """
+    try:
+        variants = await db.menu.list_available(business_id)
+    except Exception:
+        log.warning("could not read catalogue for image analysis", exc_info=True)
+        return []
+    names: dict[str, None] = {}
+    for row in variants:
+        name = (row.get("product_name") or row.get("name") or "").strip()
+        if name:
+            names.setdefault(name, None)
+    return list(names)
 
 
 async def _acknowledge_takeover(contact: dict[str, Any], business_id: str) -> None:

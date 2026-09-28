@@ -110,6 +110,14 @@ class Settings(BaseSettings):
     voice_max_duration_seconds: float = Field(default=120.0, gt=0, le=120.0)
     voice_transcription_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
     receipt_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=10 * 1024 * 1024)
+    # Customer photos are described by an OpenAI vision model so the agent can
+    # find the product they are showing. Same key and the same rule as voice:
+    # without it, or on failure, the agent still gets the photo as an
+    # attachment it cannot open and asks which product they mean.
+    image_analysis_model: str = "gpt-4o-mini"
+    # WhatsApp caps images at 5 MB; the ceiling leaves room for documents.
+    image_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1, le=10 * 1024 * 1024)
+    image_analysis_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
     # Blank means "whatever DEFAULT_MODELS says for the provider in use", so
     # LLM_PROVIDER can be changed on its own.
     llm_model: str = ""
@@ -225,6 +233,11 @@ class Settings(BaseSettings):
     @property
     def voice_transcription_configured(self) -> bool:
         """Whether voice notes can be sent to the transcription service."""
+        return bool(_secret(self.openai_api_key))
+
+    @property
+    def image_analysis_configured(self) -> bool:
+        """Whether customer photos can be sent to the vision model."""
         return bool(_secret(self.openai_api_key))
 
     def model_matches_provider(self) -> bool:
