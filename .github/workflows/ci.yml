@@ -52,11 +52,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - run: for f in *.js build.mjs; do node --check "$f"; done
-      # The product pages, the price page and the sitemap are generated from
-      # products-data.js and committed. Rebuild them and fail if anything but
-      # the build date moved, which means someone edited the catalogue and
-      # forgot to run `node build.mjs`.
-      - run: node build.mjs
-      - run: git diff --exit-code -I '<lastmod>' -I 'Last updated <time' -- .
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      # What Google reads on every page — titles, meta, canonicals, JSON-LD,
+      # headings, text, links, images — must match seo/baseline.json. An
+      # intended change (a new price, new copy) is made by re-running
+      # `npm run seo:baseline` and committing the reviewed diff.
+      - run: npm run seo:check

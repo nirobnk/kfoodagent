@@ -1,33 +1,35 @@
 # K FOOD — Netlify config
 
 # The site lives in site/ of the kfoodagent repo, beside backend/ and
-# dashboard/. When Netlify is linked to the repo, set Base directory = site in
-# the UI; this file is then read from here. The HTML is committed already
-# (build.mjs is run by hand), so there is no build command.
+# dashboard/. In the Netlify UI set Base directory = site; this file is then
+# read from here and every path below is relative to it.
+#
+# Next.js prerenders every page into out/ as plain HTML at the URLs Google
+# already knows (/cart.html, /products/<handle>.html). This changes the
+# failure mode: before, the committed HTML always deployed; now a broken
+# build is not deployed and Netlify keeps serving the previous one.
 #
 # ignore: a push that touches only backend/ or dashboard/ must not redeploy
 # the shop. Exit 0 = nothing changed under site/, skip the build.
 [build]
-  publish = "."
+  command = "npm run build"
+  publish = "out"
   ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ."
+
+[build.environment]
+  NODE_VERSION = "22"
 
 [[headers]]
   for = "/images/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# CSS/JS are versioned with ?v=N, but revalidate every load so a stale
-# cart.js can never linger in a customer's browser after a deploy.
+# Next.js puts a content hash in every file name under /_next/static, so a
+# deploy produces new names and these can be cached for good.
 [[headers]]
-  for = "/*.css"
+  for = "/_next/static/*"
   [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-
-[[headers]]
-  for = "/*.js"
-  [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-    Content-Type = "text/javascript; charset=utf-8"
+    Cache-Control = "public, max-age=31536000, immutable"
 
 # www -> apex
 [[redirects]]

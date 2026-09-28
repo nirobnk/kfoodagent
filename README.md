@@ -71,11 +71,14 @@ dashboard/         Next.js App Router + Tailwind
                    insights, products, inventory, login
   components/ui/   the design system: HeatBars, Icon, Bits (Stat, Chip, …)
   lib/crm.ts       stage colours, wording and the small client-side helpers
-site/              kfoods.lk — static HTML on Netlify
-  products-data.js the catalogue the site is built from
-  build.mjs        products-data.js -> product pages, price page, sitemap
-  cart.js          the cart; checkout builds the WhatsApp order message
-  pixel.js         Meta Pixel
+site/              kfoods.lk — Next.js, exported to static HTML on Netlify
+  products-data.js the catalogue the site is built from (plain JS: the menu
+                   card loads it with a <script> tag)
+  app/             home, cart, price list, products/[handle], sitemap, 404
+  components/      the page parts; the cart, buy box and filters are client
+  lib/             catalog.ts, seo.ts (JSON-LD), cart.ts (the WhatsApp order
+                   message), pixel.ts (Meta Pixel)
+  seo/baseline.json what Google reads on every page; CI holds builds to it
   rag-export/      the export data/kfood-catalog.json is copied from
 supabase/
   migrations/      0001_init.sql .. 0014_message_media.sql (init, rls,
@@ -528,11 +531,30 @@ request from it fails with nothing useful in the console.
 
 Then point the Meta webhook at `https://<backend-host>/webhook`.
 
-**Website — Netlify.** kfoods.lk lives in `site/`. The HTML is committed; after
-editing `products-data.js`, run `node build.mjs` in `site/` and commit what it
-regenerates — CI fails if the pages and the catalogue disagree. When Netlify is
-linked to this repo, set Base directory to `site`; `site/netlify.toml` then skips
-the build for any push that does not touch `site/`.
+**Website — Netlify.** kfoods.lk lives in `site/`, a Next.js app exported to
+plain HTML (`output: 'export'`) at exactly the URLs the hand-built site had:
+`/cart.html`, `/products/<handle>.html`. In Netlify set Base directory to
+`site`; `site/netlify.toml` supplies the build (`npm run build` → `out/`) and
+skips it for any push that does not touch `site/`. A broken build is not
+deployed — Netlify keeps serving the last good one.
+
+```bash
+cd site
+npm run dev                  # http://localhost:3000 — .html URLs work here too
+npm run build && npm run preview   # the exported site, as Netlify serves it
+```
+
+Three things the site must keep, because people depend on them: the
+`kfood_cart_v1` localStorage key (customers' carts), the WhatsApp order message
+in `lib/cart.ts` character for character (staff and the agent read it — the
+agent recognises "NEW ORDER — kfoods.lk"), and plain `<a>` links rather than
+`<Link>` (one full page load per page, so the Meta Pixel counts one PageView).
+
+`npm run seo:check` compares every page's title, meta tags, canonical,
+JSON-LD, headings, text, links and images with `seo/baseline.json`, and CI
+runs it. The baseline was first taken from the static site this replaced.
+After an intended change — a new price, new copy — run `npm run seo:baseline`
+and commit the diff, which shows exactly what Google will see change.
 
 Adding `site/` means one repo now feeds three hosts, and before the first push to
 `main` each needs a filter, or a website edit restarts the WhatsApp backend:
