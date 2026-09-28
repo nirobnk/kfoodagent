@@ -244,3 +244,80 @@ async def test_a_failed_image_is_recorded_as_failed(wired):
     # Still recorded as an image, so staff see what was attempted.
     assert failed["media_url"] == "https://kfoods.lk/missing.jpeg"
     assert failed["message_type"] == "image"
+
+
+def _webp_bytes() -> bytes:
+    import io
+
+    from PIL import Image
+
+    out = io.BytesIO()
+    Image.new("RGBA", (8, 8), (200, 30, 20, 128)).save(out, format="WEBP")
+    return out.getvalue()
+
+
+@pytest.mark.asyncio
+async def test_a_webp_image_is_converted_uploaded_and_sent_by_id(wired, monkeypatch):
+    """Shin Ramyun Original is a .webp, which WhatsApp refuses by link. It used
+    to be reported as having no photo at all; now it goes out as a JPEG."""
+    fake, wa = wired
+    outbound._uploaded.clear()
+    fetched: list[str] = []
+
+    async def fetch(url):
+        fetched.append(url)
+        return _webp_bytes()
+
+    monkeypatch.setattr(outbound, "_fetch_image", fetch)
+    url = "https://kfoods.lk/images/shin-ramyun-pack.webp"
+
+    for _ in range(2):
+        result = await outbound.send_image(
+            business_id=BUSINESS_ID, contact=contact_row(), image_url=url, caption="Shin"
+        )
+        assert result.ok
+
+    assert fetched == [url], "converted once, then the upload is reused"
+    assert len(wa.uploads) == 1
+    content, mime, filename = wa.uploads[0]
+    assert mime == "image/jpeg" and filename == "shin-ramyun-pack.jpg"
+    assert content[:3] == b"\xff\xd8\xff", "a real JPEG"
+    assert wa.image_media_ids == ["media-upload-1", "media-upload-1"]
+    # The dashboard still shows the catalogue image itself.
+    assert fake.tables["messages"][-1]["media_url"] == url
+
+
+@pytest.mark.asyncio
+async def test_a_jpeg_is_still_sent_by_link(wired, monkeypatch):
+    fake, wa = wired
+
+    async def fetch(url):
+        raise AssertionError("a JPEG must not be downloaded")
+
+    monkeypatch.setattr(outbound, "_fetch_image", fetch)
+    await outbound.send_image(
+        business_id=BUSINESS_ID, contact=contact_row(), image_url="https://kfoods.lk/a.jpeg"
+    )
+
+    assert wa.image_media_ids == [None]
+    assert wa.uploads == []
+
+
+@pytest.mark.asyncio
+async def test_an_unconvertible_image_is_recorded_as_failed(wired, monkeypatch):
+    fake, wa = wired
+    outbound._uploaded.clear()
+
+    async def fetch(url):
+        return b"not an image"
+
+    monkeypatch.setattr(outbound, "_fetch_image", fetch)
+    result = await outbound.send_image(
+        business_id=BUSINESS_ID,
+        contact=contact_row(),
+        image_url="https://kfoods.lk/broken.webp",
+    )
+
+    assert result.ok is False
+    assert wa.images == []
+    assert fake.tables["messages"][-1]["status"] == "failed"

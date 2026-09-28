@@ -415,6 +415,18 @@ async def receipt_file(
     return schemas.ReceiptFileResponse(url=url, expires_in=expires_in)
 
 
+@app.get("/messages/{message_id}/media", response_model=schemas.MessageMediaResponse)
+async def message_media(
+    message_id: str, staff: Principal = Depends(require_staff)
+) -> schemas.MessageMediaResponse:
+    """Give staff short-lived access to a photo a customer sent."""
+    expires_in = 300
+    url = await db.messages.signed_media_url(BUSINESS_ID, message_id, expires_in=expires_in)
+    if url is None:
+        raise HTTPException(status_code=404, detail="stored photo not found")
+    return schemas.MessageMediaResponse(url=url, expires_in=expires_in)
+
+
 @app.get("/contacts")
 async def list_contacts(
     limit: int = 100, staff: Principal = Depends(require_staff)

@@ -132,6 +132,10 @@ export const api = {
     return request<Usage>('/stats/usage');
   },
 
+  messageMedia(messageId: string) {
+    return request<{ url: string; expires_in: number }>(`/messages/${messageId}/media`);
+  },
+
   listStock(trackedOnly = false) {
     const query = trackedOnly ? '?tracked_only=true' : '';
     return request<{ items: StockItem[] }>(`/inventory${query}`);

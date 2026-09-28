@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -11,6 +12,8 @@ from .client import first, get_db, rows
 log = logging.getLogger(__name__)
 
 TABLE = "messages"
+MEDIA_BUCKET = "message-media"
+MEDIA_EXTENSIONS = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 
 
 async def exists(wa_message_id: str) -> bool:
@@ -154,6 +157,58 @@ async def fail_image_analysis(message_id: str, error: str) -> None:
         .eq("id", message_id)
         .execute()
     )
+
+
+async def store_media(
+    *,
+    message_id: str,
+    business_id: str,
+    contact_id: str,
+    content: bytes,
+    mime_type: str,
+) -> None:
+    """Copy an inbound photo into private storage and point the message at it."""
+    clean_mime = mime_type.split(";", 1)[0].strip().lower()
+    extension = MEDIA_EXTENSIONS.get(clean_mime)
+    if extension is None:
+        raise ValueError(f"unsupported message media type: {clean_mime}")
+    if not content:
+        raise ValueError("message media is empty")
+
+    digest = hashlib.sha256(content).hexdigest()
+    path = f"{business_id}/{contact_id}/{message_id}/{digest}{extension}"
+    db = await get_db()
+    await db.storage.from_(MEDIA_BUCKET).upload(
+        path=path,
+        file=content,
+        file_options={
+            "content-type": clean_mime,
+            "cache-control": "3600",
+            # The path is content-addressed, so retries are safe.
+            "upsert": "true",
+        },
+    )
+    await db.table(TABLE).update({"media_path": path}).eq("id", message_id).execute()
+
+
+async def signed_media_url(
+    business_id: str, message_id: str, *, expires_in: int = 300
+) -> str | None:
+    """A short-lived URL for one stored inbound photo, or None if there is none."""
+    db = await get_db()
+    res = (
+        await db.table(TABLE)
+        .select("media_path")
+        .eq("business_id", business_id)
+        .eq("id", message_id)
+        .limit(1)
+        .execute()
+    )
+    path = (first(res) or {}).get("media_path")
+    if not path:
+        return None
+    signed = await db.storage.from_(MEDIA_BUCKET).create_signed_url(str(path), expires_in)
+    return str(signed.get("signedUrl") or signed.get("signedURL") or "") or None
 
 
 async def update_status(wa_message_id: str, status: str, error: str | None = None) -> None:

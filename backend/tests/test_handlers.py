@@ -277,6 +277,11 @@ async def test_product_photo_is_described_before_agent_runs(wired, monkeypatch):
     assert len(seen_catalogue) == len(set(seen_catalogue)), "one name per product"
     stored = next(m for m in fake.rows("messages") if m["direction"] == "in")
     assert stored["body"] == "do you have this?"
+    assert stored["media_path"].endswith(".jpg")
+    assert stored["media_path"].startswith(f"{BUSINESS_ID}/")
+    assert ("message-media", stored["media_path"]) in fake.storage.files
+    url = await db.messages.signed_media_url(BUSINESS_ID, str(stored["id"]))
+    assert url and url.startswith("https://storage.example/message-media/")
     assert stored["image_analysis_status"] == "completed"
     assert stored["image_description"] == (
         "Product photo: Shin Ramyun Black. A red and black Nongshim noodle packet."

@@ -8,15 +8,73 @@ that every send is written to the `messages` table.
 
 from __future__ import annotations
 
+import asyncio
+import io
 import logging
+import time
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
+
+import httpx
+from PIL import Image
 
 import db
 from whatsapp import WhatsAppError, can_send_free_text, get_client
 
 log = logging.getLogger(__name__)
+
+# WhatsApp accepts only JPEG and PNG for an image message; a .webp link comes
+# back as "Media upload error". Shin Ramyun Original and Shin Ramyun Cup are
+# webp in the catalogue, so they are converted to JPEG, uploaded, and sent by
+# media id instead of being reported to the customer as having no photo.
+LINKABLE_SUFFIXES = (".jpg", ".jpeg", ".png")
+MAX_SOURCE_IMAGE_BYTES = 5 * 1024 * 1024
+# Meta keeps an uploaded file for 30 days. Reuse the id well inside that, so a
+# popular product is converted and uploaded once, not on every request.
+UPLOAD_REUSE_SECONDS = 20 * 24 * 3600
+_uploaded: dict[str, tuple[str, float]] = {}
+
+
+def is_linkable_image(image_url: str) -> bool:
+    path = image_url.split("?", 1)[0].split("#", 1)[0].lower()
+    return path.endswith(LINKABLE_SUFFIXES)
+
+
+def _to_jpeg(content: bytes) -> bytes:
+    with Image.open(io.BytesIO(content)) as image:
+        image.load()
+        if image.mode in ("RGBA", "LA", "P"):
+            rgba = image.convert("RGBA")
+            flat = Image.new("RGB", rgba.size, (255, 255, 255))
+            flat.paste(rgba, mask=rgba.getchannel("A"))
+        else:
+            flat = image.convert("RGB")
+    out = io.BytesIO()
+    flat.save(out, format="JPEG", quality=88, optimize=True)
+    return out.getvalue()
+
+
+async def _fetch_image(image_url: str) -> bytes:
+    async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as http:
+        response = await http.get(image_url)
+        response.raise_for_status()
+    if len(response.content) > MAX_SOURCE_IMAGE_BYTES:
+        raise ValueError(f"source image is larger than {MAX_SOURCE_IMAGE_BYTES} bytes")
+    return response.content
+
+
+async def _uploaded_jpeg_id(image_url: str, client: Any) -> str:
+    """Fetch an image Meta will not take by link, and upload it as a JPEG."""
+    cached = _uploaded.get(image_url)
+    if cached and time.monotonic() - cached[1] < UPLOAD_REUSE_SECONDS:
+        return cached[0]
+
+    jpeg = await asyncio.to_thread(_to_jpeg, await _fetch_image(image_url))
+    name = image_url.split("?", 1)[0].rsplit("/", 1)[-1].rsplit(".", 1)[0] or "photo"
+    media_id = await client.upload_media(jpeg, "image/jpeg", f"{name}.jpg")
+    _uploaded[image_url] = (media_id, time.monotonic())
+    return media_id
 
 
 @dataclass(slots=True)
@@ -113,9 +171,22 @@ async def send_image(
     body = caption.strip() or "[photo]"
 
     client = get_client()
+    media_id: str | None = None
     try:
-        wa_message_id = await client.send_image(contact["wa_id"], image_url, caption=caption)
+        if not is_linkable_image(image_url):
+            try:
+                media_id = await _uploaded_jpeg_id(image_url, client)
+            except WhatsAppError:
+                raise
+            except Exception as exc:
+                raise WhatsAppError(f"could not convert image: {type(exc).__name__}: {exc}") from exc
+        wa_message_id = await client.send_image(
+            contact["wa_id"], image_url, caption=caption, media_id=media_id
+        )
     except WhatsAppError as exc:
+        if media_id:
+            # The upload may have expired early; the next send uploads afresh.
+            _uploaded.pop(image_url, None)
         await db.messages.save(
             business_id=business_id,
             contact_id=contact["id"],

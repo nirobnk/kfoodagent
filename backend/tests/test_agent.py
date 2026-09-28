@@ -414,9 +414,10 @@ def test_the_prompt_tells_it_to_send_photos_rather_than_the_website():
     assert "never say you cannot send photos" in prompt
 
 
-async def test_a_webp_photo_is_reported_missing_rather_than_failing(photo_env, monkeypatch):
-    """WhatsApp treats .webp as a sticker and answers "Media upload error",
-    which a customer saw. Skip it before spending the call."""
+async def test_a_webp_photo_is_still_sent(photo_env, monkeypatch):
+    """A .webp used to be reported as "no photo", so Shin Ramyun Original
+    had a photo in one chat and none in the next. outbound now converts it,
+    so the tool must hand it over rather than skip it."""
     import db as db_module
 
     sent, _, config = photo_env
@@ -434,8 +435,31 @@ async def test_a_webp_photo_is_reported_missing_rather_than_failing(photo_env, m
         {"products": "Shin Ramyun Original"}, config=config
     )
 
+    assert [s["image_url"] for s in sent] == ["https://kfoods.lk/images/shin-ramyun-pack.webp"]
+    assert "Photo sent for" in result
+
+
+async def test_a_missing_photo_is_not_described_as_a_file(photo_env, monkeypatch):
+    """Customers were told "photo eka file eke naha". They know nothing about a
+    file; a shop assistant would say they don't have a photo of it right now."""
+    import db as db_module
+
+    sent, _, config = photo_env
+    real = db_module.menu.get_product_detail
+
+    async def no_photo(business_id, query):
+        product = await real(business_id, query)
+        if product:
+            product["image_url"] = None
+        return product
+
+    monkeypatch.setattr(db_module.menu, "get_product_detail", no_photo)
+
+    result = await send_product_photo.ainvoke({"products": "Shin Ramyun Original"}, config=config)
+
     assert sent == []
-    assert "No photo on file" in result
+    assert "eke photo ekak nam danata mage laga na" in result
+    assert "I have no photo of: Shin Ramyun Original right now" in result
 
 
 def test_the_prompt_asks_for_one_product_per_line_with_a_price():
