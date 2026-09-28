@@ -24,19 +24,6 @@ log = logging.getLogger(__name__)
 # request like "show me the drinks" sends a taste, not the whole shelf.
 MAX_PHOTOS = 3
 
-# WhatsApp accepts only JPEG and PNG for an image message. A .webp is a
-# sticker to Meta, and sending one comes back as "Media upload error" — which
-# is what happened to Shin Ramyun Original in front of a customer. Two rows in
-# the catalogue are webp; treat them as having no photo rather than burning an
-# API call to be told so.
-SENDABLE_SUFFIXES = (".jpg", ".jpeg", ".png")
-
-
-def _is_sendable(image_url: str) -> bool:
-    path = image_url.split("?", 1)[0].split("#", 1)[0].lower()
-    return path.endswith(SENDABLE_SUFFIXES)
-
-
 # Words that carry no identity, so their absence should not reject a match.
 _FILLER = {"the", "and", "pack", "flavour", "flavoured", "flavor", "drink", "cup"}
 
@@ -102,7 +89,8 @@ async def send_product_photo(products: str, config: RunnableConfig) -> str:
 
         image_url = (product.get("image_url") or "").strip()
         label = product.get("product_name") or name
-        if not image_url or not _is_sendable(image_url):
+        # A .webp is fine here: outbound converts it to a JPEG WhatsApp takes.
+        if not image_url:
             missing.append(label)
             continue
 
@@ -133,11 +121,20 @@ async def send_product_photo(products: str, config: RunnableConfig) -> str:
     if sent:
         lines.append(f"Photo sent for: {', '.join(sent)}. Do not describe it, they can see it.")
     if missing:
-        lines.append(f"No photo on file for: {', '.join(missing)}. Tell the customer honestly.")
+        lines.append(
+            f"I have no photo of: {', '.join(missing)} right now. Say it the way a shop "
+            "assistant would — that you don't have a photo of that one with you at the "
+            "moment (Singlish: \"eke photo ekak nam danata mage laga na\") — never that it "
+            "is not \"in the file\" or \"on file\". Then offer a photo of a similar product, "
+            "or describe it with product_details."
+        )
     if unknown:
         lines.append(f"Not on the catalogue: {', '.join(unknown)}. Check the name with search_menu.")
     if failed:
-        lines.append(f"Sending failed for: {', '.join(failed)}. Apologise and offer the website.")
+        lines.append(
+            f"Sending failed for: {', '.join(failed)}. Say the photo did not go through "
+            "just now and offer to try again or describe it."
+        )
     if not lines:
         return "Nothing was sent."
     return " ".join(lines)

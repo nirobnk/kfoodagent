@@ -85,6 +85,11 @@ class ReceiptFileResponse(BaseModel):
     expires_in: int
 
 
+class MessageMediaResponse(BaseModel):
+    url: str
+    expires_in: int
+
+
 class UsageResponse(BaseModel):
     month_start: str
     outbound_messages: int

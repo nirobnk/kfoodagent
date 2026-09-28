@@ -118,7 +118,7 @@ async def _process(message: InboundMessage, business_id: str) -> None:
         # from history next to the caption. incoming_text stays the caption:
         # it is what the customer wrote, and the model's view of the photo
         # must not be passed off as their words.
-        await _describe_image(message, str(saved["id"]), business_id, client)
+        await _process_image(message, str(saved["id"]), business_id, contact_id, client)
 
     if contact.get("human_takeover"):
         # The agent stays out of it — but silence is not a neutral act. A
@@ -270,14 +270,48 @@ async def _transcribe_voice(
         return message.text or ""
 
 
-async def _describe_image(
-    message: InboundMessage, message_id: str, business_id: str, client: Any
+async def _process_image(
+    message: InboundMessage,
+    message_id: str,
+    business_id: str,
+    contact_id: str,
+    client: Any,
 ) -> None:
-    """Record what the photo shows while making analysis failure non-fatal.
+    """Keep the photo for staff and record what it shows. Never fatal.
 
-    On failure the agent sees the photo exactly as it did before this
-    existed — an attachment it cannot open — and asks which product it is.
+    Downloaded once and used twice. If analysis fails the agent sees the photo
+    as it did before analysis existed — an attachment it cannot open — and
+    asks which product it is.
     """
+    try:
+        media = await client.download_media(
+            str(message.media_id), max_bytes=settings.image_max_bytes
+        )
+    except Exception as exc:
+        await db.messages.fail_image_analysis(
+            message_id, f"download failed: {type(exc).__name__}: {exc}"
+        )
+        log.warning(
+            "inbound photo could not be downloaded",
+            extra={"message_id": message_id, "error_type": type(exc).__name__},
+        )
+        return
+
+    try:
+        # Meta's copy expires; without this the dashboard can never show it.
+        await db.messages.store_media(
+            message_id=message_id,
+            business_id=business_id,
+            contact_id=contact_id,
+            content=media.content,
+            mime_type=media.mime_type,
+        )
+    except Exception as exc:
+        log.warning(
+            "inbound photo could not be stored",
+            extra={"message_id": message_id, "error_type": type(exc).__name__},
+        )
+
     if not settings.image_analysis_configured:
         error = "image analysis is not configured"
         await db.messages.fail_image_analysis(message_id, error)
@@ -285,9 +319,6 @@ async def _describe_image(
         return
 
     try:
-        media = await client.download_media(
-            str(message.media_id), max_bytes=settings.image_max_bytes
-        )
         catalogue = await _catalogue_names(business_id)
         analysis = await describe_image(media, catalogue=catalogue)
         await db.messages.complete_image_analysis(message_id, analysis.as_text())

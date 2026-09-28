@@ -39,6 +39,7 @@ export interface Message {
   sender: Sender;
   body: string | null;
   media_url: string | null;
+  media_path?: string | null;
   message_type: string;
   template_name: string | null;
   wa_message_id: string | null;

@@ -1,5 +1,6 @@
 import { formatTime } from '@/lib/format';
 import type { Message } from '@/lib/types';
+import { InboundPhoto } from './InboundPhoto';
 
 // WhatsApp's own marks: one tick sent, two delivered, two blue read. Drawn as
 // text because that is what they are — swapping in an icon set would put a
@@ -50,6 +51,10 @@ export function MessageBubble({
                 ? 'Transcribing voice…'
                 : 'Voice message'}
           </div>
+        )}
+
+        {!mine && message.media_path && !message.media_url && (
+          <InboundPhoto messageId={message.id} alt={message.body || 'Customer photo'} />
         )}
 
         {message.media_url && (

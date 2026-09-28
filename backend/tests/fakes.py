@@ -274,6 +274,7 @@ class FakeSupabase:
                 "image_description": None,
                 "image_analysis_status": None,
                 "image_analysis_error": None,
+                "media_path": None,
             },
             "payment_receipts": {
                 "order_id": None,
@@ -470,6 +471,8 @@ class FakeWhatsApp:
         self.texts: list[tuple[str, str]] = []
         self.templates: list[tuple[str, str, list[Any]]] = []
         self.images: list[tuple[str, str, str]] = []
+        self.image_media_ids: list[str | None] = []
+        self.uploads: list[tuple[bytes, str, str]] = []
         self.read_receipts: list[str] = []
         self.media_downloads: dict[str, Any] = {}
         self.downloaded_media_ids: list[str] = []
@@ -483,10 +486,13 @@ class FakeWhatsApp:
         self._counter += 1
         return f"wamid.OUT{self._counter}"
 
-    async def send_image(self, wa_id: str, image_url: str, *, caption: str = "") -> str:
+    async def send_image(
+        self, wa_id: str, image_url: str = "", *, caption: str = "", media_id: str | None = None
+    ) -> str:
         if self.fail_with:
             raise self.fail_with
         self.images.append((wa_id, image_url, caption))
+        self.image_media_ids.append(media_id)
         self._counter += 1
         return f"wamid.IMG{self._counter}"
 
@@ -497,6 +503,10 @@ class FakeWhatsApp:
         self.templates.append((wa_id, name, list(variables)))
         self._counter += 1
         return f"wamid.TPL{self._counter}"
+
+    async def upload_media(self, content: bytes, mime_type: str, filename: str) -> str:
+        self.uploads.append((content, mime_type, filename))
+        return f"media-upload-{len(self.uploads)}"
 
     async def mark_read(self, wa_message_id: str) -> None:
         self.read_receipts.append(wa_message_id)

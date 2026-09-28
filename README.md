@@ -72,9 +72,9 @@ dashboard/         Next.js App Router + Tailwind
   components/ui/   the design system: HeatBars, Icon, Bits (Stat, Chip, …)
   lib/crm.ts       stage colours, wording and the small client-side helpers
 supabase/
-  migrations/      0001_init.sql .. 0013_image_understanding.sql (init, rls,
+  migrations/      0001_init.sql .. 0014_message_media.sql (init, rls,
                    catalog, inventory, pos, crm, voice, durable receipts,
-                   customer photo descriptions)
+                   customer photo descriptions and storage)
   seed.sql         business row + message templates — run by hand
   seed_catalog.sql GENERATED: 90 product variants, business profile, 9 FAQs
 data/              kfood-catalog.json, kfood-images.json — exported from the kfoods.lk site
@@ -123,7 +123,7 @@ above.
 
 1. Create a project (region: Singapore is closest to Sri Lanka).
 2. SQL editor → run every file in `supabase/migrations/` in numeric order, `0001_init.sql`
-   through `0013_image_understanding.sql`. (`supabase/setup.sql` is an older one-paste bundle and
+   through `0014_message_media.sql`. (`supabase/setup.sql` is an older one-paste bundle and
    stops at `0004`; it is not enough on its own.)
 3. Edit the `vals` block at the top of `supabase/seed.sql`, run it, and copy the printed
    `business_id`.

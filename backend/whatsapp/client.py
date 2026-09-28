@@ -145,14 +145,18 @@ class WhatsAppClient:
         }
         return await self._send(payload, wa_id=wa_id, kind="text")
 
-    async def send_image(self, wa_id: str, image_url: str, *, caption: str = "") -> str:
-        """Send an image by public URL. Only legal inside the 24-hour window.
+    async def send_image(
+        self, wa_id: str, image_url: str = "", *, caption: str = "", media_id: str | None = None
+    ) -> str:
+        """Send an image by public URL or uploaded media id. 24-hour window only.
 
-        Meta fetches the URL itself, so nothing is uploaded here — but that also
-        means a URL Meta cannot reach fails the send rather than degrading to a
-        broken image. The caption is what the customer reads under the photo.
+        By URL, Meta fetches it itself, so a URL Meta cannot reach fails the
+        send rather than degrading to a broken image. By media id, the bytes
+        were uploaded first with upload_media — the route for any image Meta
+        will not take by link, such as a .webp. The caption is what the
+        customer reads under the photo.
         """
-        image: dict[str, Any] = {"link": image_url}
+        image: dict[str, Any] = {"id": media_id} if media_id else {"link": image_url}
         if caption:
             image["caption"] = caption[:1024]
         payload = {
@@ -226,6 +230,36 @@ class WhatsAppClient:
         return message_id
 
     # -- media -------------------------------------------------------------
+    async def upload_media(self, content: bytes, mime_type: str, filename: str) -> str:
+        """Upload bytes to Meta and return a media id usable in a send.
+
+        Multipart, so it does not go through the JSON client: its default
+        Content-Type would override the multipart boundary.
+        """
+        url = f"{self._base}/{self._phone_number_id}/media"
+        try:
+            async with httpx.AsyncClient(
+                timeout=30.0, headers={"Authorization": f"Bearer {self._token}"}
+            ) as client:
+                response = await client.post(
+                    url,
+                    data={"messaging_product": "whatsapp", "type": mime_type},
+                    files={"file": (filename, content, mime_type)},
+                )
+        except httpx.HTTPError as exc:
+            raise WhatsAppError("WhatsApp media upload failed", details=str(exc)) from exc
+
+        body = _safe_json(response)
+        if response.status_code >= 400 or not isinstance(body, dict) or not body.get("id"):
+            error = (body.get("error") or {}) if isinstance(body, dict) else {}
+            raise WhatsAppError(
+                error.get("message") or f"media upload HTTP {response.status_code}",
+                code=error.get("code"),
+                status=response.status_code,
+                details=error,
+            )
+        return str(body["id"])
+
     async def media_info(self, media_id: str) -> dict[str, Any] | None:
         """Resolve Meta's short-lived download URL and media metadata."""
         try:
