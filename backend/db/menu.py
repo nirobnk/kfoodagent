@@ -158,10 +158,24 @@ async def search(business_id: str, query: str, limit: int = 60) -> list[dict[str
     if found:
         return found
 
-    # "spicy noodles" finds nothing as a phrase — try the individual words.
     words = [w for w in term.split() if len(w) > 2][:4]
     if not words:
         return []
+
+    # "shin red" is not a phrase in any name, but both words are in exactly one
+    # product's name: Shin Ramyun Red Super Spicy. Matching any word instead
+    # returned every Shin pack in shelf order, Original first — and the agent
+    # sent a customer who asked for Shin Red a photo of the Original, because
+    # its packet happens to be red. A name holding every word the customer
+    # typed is what they meant.
+    query = db.table(TABLE).select(FIELDS).eq("business_id", business_id).eq("available", True)
+    for word in words:
+        query = query.ilike("product_name", f"%{word}%")
+    found = rows(await query.order("sort_order").limit(limit).execute())
+    if found:
+        return found
+
+    # "spicy noodles" finds nothing as a phrase or a name — try any word.
     clause = ",".join(
         f"{column}.ilike.%{word}%"
         for word in words
