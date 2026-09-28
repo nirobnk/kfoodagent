@@ -500,9 +500,11 @@ replica, no serverless sleep, at `https://kfoodagent-dimuthu-production.up.railw
 
 `railway.json` is **not** read: Config as Code is closed to services created after
 2026-08-28, so builder, start command and healthcheck are set in the service UI.
-Root Directory is `backend` and watch paths are **cleared** — watch paths resolve
-against the Root Directory, so `/backend/**` matches nothing and pushes silently
-stop deploying. Leave them cleared.
+Root Directory is `/backend` and the watch path is `/backend/**`. Railway matches
+watch paths from the repo root even when a Root Directory is set, so that is the
+right form — and the deploy history proves it: merges that touched only
+`dashboard/` show as SKIPPED, every merge that touched `backend/` deployed. An
+earlier note here said the pattern "matched nothing"; it was wrong.
 
 A push to `main` deploys. `main.py:lifespan` refuses to start in production if
 `check_production_readiness()` returns anything, so a container that booted has
@@ -556,13 +558,14 @@ runs it. The baseline was first taken from the static site this replaced.
 After an intended change — a new price, new copy — run `npm run seo:baseline`
 and commit the diff, which shows exactly what Google will see change.
 
-Adding `site/` means one repo now feeds three hosts, and before the first push to
-`main` each needs a filter, or a website edit restarts the WhatsApp backend:
+One repo feeds three hosts, and each builds only what changed:
 
-* Railway — watch paths so only `backend/` changes deploy. Test it with a
-  site-only push: a wrong pattern silently stops *every* deploy (see above).
-* Cloudflare Pages — Settings → Build → Build watch paths: include `dashboard/*`.
-* Netlify — handled by the `ignore` command in `site/netlify.toml`.
+* Railway — the `/backend/**` watch path (above): a website edit never restarts
+  the WhatsApp backend.
+* Netlify — the `ignore` command in `site/netlify.toml`.
+* Cloudflare Pages — no filter yet, so any push rebuilds the dashboard. That is
+  harmless (the output is identical) but wasted build minutes; add
+  Settings → Build → Build watch paths → Include paths: `dashboard/*`.
 
 ---
 
