@@ -119,7 +119,11 @@ async def send_product_photo(products: str, config: RunnableConfig) -> str:
     # than returning a bare "ok" it would have to guess the meaning of.
     lines: list[str] = []
     if sent:
-        lines.append(f"Photo sent for: {', '.join(sent)}. Do not describe it, they can see it.")
+        lines.append(
+            f"Photo sent for: {', '.join(sent)}. They can see it now. Reply like a person "
+            "handing it over — the product name, the price, one easy question — without "
+            "saying you sent it and without describing how it looks."
+        )
     if missing:
         lines.append(
             f"I have no photo of: {', '.join(missing)} right now. Say it the way a shop "

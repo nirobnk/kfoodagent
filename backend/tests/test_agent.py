@@ -68,6 +68,36 @@ async def test_search_menu_returns_every_variant_price_and_sku(tool_env):
     assert ctx.tools_called == ["search_menu"]
 
 
+async def test_shin_red_means_the_red_super_spicy_not_the_red_packet(tool_env):
+    """A customer asked for "Shin red" and got the Original, whose packet is
+    red, because any-word matching listed every Shin pack Original first."""
+    fake, ctx, config = tool_env
+    original = [r for r in fake.rows("menu_items") if r["handle"] == "shin-ramyun"]
+    fake.seed(
+        "menu_items",
+        [
+            {
+                **row,
+                "id": row["id"].replace("shin-ramyun", "super-spicy"),
+                "handle": "super-spicy",
+                "sku": row["sku"] + "-RED",
+                "product_name": "Shin Ramyun Red Super Spicy",
+                "name": row["name"].replace("Original", "Red Super Spicy"),
+                "short_description": "A soup ramyun with a deep red broth.",
+                "sort_order": (row.get("sort_order") or 0) + 100,
+            }
+            for row in original
+        ],
+    )
+
+    result = await search_menu.ainvoke({"query": "Shin red"}, config=config)
+    detail = await db.menu.get_product_detail(ctx.business_id, "Shin red")
+
+    assert "Shin Ramyun Red Super Spicy" in result
+    assert "Shin Ramyun Original" not in result
+    assert detail["product_name"] == "Shin Ramyun Red Super Spicy"
+
+
 async def test_search_menu_finds_a_product_by_brand_or_category(tool_env):
     _, _, config = tool_env
 
