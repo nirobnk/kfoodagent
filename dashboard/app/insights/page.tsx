@@ -14,8 +14,8 @@ import {
   Stat,
 } from '@/components/ui/Bits';
 import { LIFECYCLE, LIFECYCLE_ORDER, SOURCES, change } from '@/lib/crm';
-import { formatMoney } from '@/lib/format';
-import type { AdPerformance, Analytics } from '@/lib/types';
+import { formatMoney, formatUsd } from '@/lib/format';
+import type { AdPerformance, AgentCost, Analytics } from '@/lib/types';
 
 /**
  * Where the money comes from.
@@ -224,6 +224,9 @@ export default function InsightsPage() {
             </section>
           </div>
 
+          {/* --- what the agent costs ------------------------------------ */}
+          {data.agent_cost && <AgentCostCard cost={data.agent_cost} />}
+
           {/* --- which ads sell ------------------------------------------ */}
           <section className="card mt-4 p-5">
             <h2 className="font-display text-lg font-extrabold tracking-tightest">
@@ -320,9 +323,9 @@ function AdTable({ ads }: { ads: AdPerformance[] }) {
         return (
           <li
             key={ad.ad_id ?? ad.headline ?? 'unknown'}
-            className="grid grid-cols-2 gap-x-4 gap-y-1 py-3 sm:grid-cols-[minmax(0,1fr)_repeat(4,6rem)] sm:items-baseline"
+            className="grid grid-cols-2 gap-x-4 gap-y-1 py-3 lg:grid-cols-[minmax(0,1fr)_repeat(5,6rem)] lg:items-baseline"
           >
-            <div className="col-span-2 min-w-0 sm:col-span-1">
+            <div className="col-span-2 min-w-0 lg:col-span-1">
               <p className="truncate text-sm font-medium">{ad.headline || 'Untitled ad'}</p>
               <p className="truncate font-mono text-2xs text-soy">
                 {ad.source_type === 'post' ? 'Post' : 'Ad'} {ad.ad_id ?? '—'}
@@ -335,6 +338,7 @@ function AdTable({ ads }: { ads: AdPerformance[] }) {
             />
             <AdFigure label="Paid" value={String(ad.paid_orders)} />
             <AdFigure label="Revenue" value={formatMoney(ad.revenue)} />
+            <AdFigure label="Agent cost" value={formatUsd(ad.agent_cost_usd ?? 0)} />
           </li>
         );
       })}
@@ -344,9 +348,56 @@ function AdTable({ ads }: { ads: AdPerformance[] }) {
 
 function AdFigure({ label, value }: { label: string; value: string }) {
   return (
-    <div className="sm:text-right">
+    <div className="lg:text-right">
       <p className="eyebrow">{label}</p>
       <p className="whitespace-nowrap font-mono text-sm tnum">{value}</p>
     </div>
+  );
+}
+
+function AgentCostCard({ cost }: { cost: AgentCost }) {
+  const input = cost.tokens.input;
+  const written = input > 0 ? Math.round((cost.tokens.cache_write / input) * 100) : 0;
+
+  return (
+    <section className="card mt-4 p-5">
+      <h2 className="font-display text-lg font-extrabold tracking-tightest">
+        What the agent costs
+      </h2>
+      <p className="mb-4 text-sm text-soy">
+        OpenAI charges for every reply the WhatsApp agent writes, in US dollars. Counted from
+        the day this started being recorded.
+      </p>
+      {cost.replies === 0 ? (
+        <Empty title="No replies recorded in this window">
+          Costs appear here from the first reply after this update.
+        </Empty>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Stat
+              label={`Total, ${cost.days} days`}
+              value={formatUsd(cost.cost_usd)}
+              sub={`${cost.replies} replies · ${cost.model_calls} model calls`}
+            />
+            <Stat label="Per reply" value={formatUsd(cost.per_reply_usd)} />
+            <Stat
+              label="Per customer chat"
+              value={formatUsd(cost.per_chat_usd)}
+              sub={`${cost.chats} customers`}
+            />
+            <Stat
+              label="Per order"
+              value={cost.per_order_usd === null ? '—' : formatUsd(cost.per_order_usd)}
+              sub={`${cost.orders} orders from WhatsApp`}
+            />
+          </div>
+          <p className="mt-3 font-mono text-2xs text-soy">
+            {cost.tokens.input.toLocaleString()} input tokens · {written}% new to the cache (the
+            dearest kind) · {cost.tokens.output.toLocaleString()} output tokens
+          </p>
+        </>
+      )}
+    </section>
   );
 }

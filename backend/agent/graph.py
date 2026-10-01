@@ -26,11 +26,15 @@ from agent.llm import get_llm
 from agent.prompts import FALLBACK_REPLY, build_system_prompt
 from agent.state import AgentState, RunContext
 from agent.tools import TOOLS
+from agent.usage import TokenUsage
 from config import settings
 
 log = logging.getLogger(__name__)
 
-MAX_REPLY_CHARS = 900
+# A stop on runaway replies, not a length target. 900 cut the full price list
+# mid-line ("Hot Dak Stir-Fry Ramen…") and the customer never saw the rest;
+# twenty products with prices run to about 1,100. WhatsApp allows 4,096.
+MAX_REPLY_CHARS = 2000
 
 # An attachment the model cannot open. A caption is readable text, so the
 # message reaches the agent — but unlabelled it looks like an ordinary message,
@@ -50,6 +54,7 @@ class AgentReply:
     payment_order: dict[str, Any] | None = None
     tools_called: list[str] = field(default_factory=list)
     failed: bool = False
+    usage: TokenUsage | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +154,9 @@ def _llm_with_tools() -> Any:
 async def agent_node(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
     messages = state.get("messages") or []
     response = await _llm_with_tools().ainvoke(messages, config)
+    ctx = ((config or {}).get("configurable") or {}).get("run_context")
+    if ctx is not None:
+        ctx.usage.add(response)
     return {"messages": [response]}
 
 
@@ -253,6 +261,7 @@ async def run_agent(
             escalation_reason=ctx.escalation_reason,
             tools_called=ctx.tools_called,
             failed=True,
+            usage=ctx.usage,
         )
 
     messages = result.get("messages") or []
@@ -275,6 +284,11 @@ async def run_agent(
             "tools": ctx.tools_called,
             "escalated": ctx.escalated,
             "reply_chars": len(reply_text),
+            "llm_calls": ctx.usage.calls,
+            "input_tokens": ctx.usage.input_tokens,
+            "cache_write_tokens": ctx.usage.cache_write_tokens,
+            "output_tokens": ctx.usage.output_tokens,
+            "cost_usd": ctx.usage.cost_usd(),
         },
     )
 
@@ -288,4 +302,5 @@ async def run_agent(
         payment_reported=ctx.payment_reported,
         payment_order=ctx.payment_order,
         tools_called=ctx.tools_called,
+        usage=ctx.usage,
     )

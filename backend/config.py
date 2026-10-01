@@ -122,6 +122,13 @@ class Settings(BaseSettings):
     # LLM_PROVIDER can be changed on its own.
     llm_model: str = ""
     llm_temperature: float = 0.2
+    # Dollars per million tokens, for the cost figures on the dashboard. The
+    # defaults are gpt-5.6-terra's, checked against the OpenAI bill for
+    # Sept 30. Change them with the model.
+    llm_price_input: float = 2.00
+    llm_price_cached_input: float = 0.20
+    llm_price_cache_write: float = 2.50
+    llm_price_output: float = 12.00
     llm_max_tool_loops: int = 6
     # Reasoning models only (gpt-5*, o-series); the older chat models reject the
     # parameter outright, so it is sent only when set. Valid values vary by

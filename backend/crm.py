@@ -440,15 +440,16 @@ def ad_performance(
     referrals: Iterable[dict[str, Any]],
     orders: Iterable[dict[str, Any]],
     *,
+    usage: Iterable[dict[str, Any]] = (),
     days: int = 30,
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
-    """Chats, orders and money per ad, best earner first.
+    """Chats, orders, money and agent cost per ad, best earner first.
 
-    An order belongs to the customer's most recent ad tap before it, if that
-    tap was within AD_ATTRIBUTION_DAYS. Shop-counter orders are left out: the
-    till does not know who saw what. `referrals` must reach back far enough to
-    cover the attribution window before `days`.
+    An order — or an agent reply's cost — belongs to the customer's most recent
+    ad tap before it, if that tap was within AD_ATTRIBUTION_DAYS. Shop-counter
+    orders are left out: the till does not know who saw what. `referrals` must
+    reach back far enough to cover the attribution window before `days`.
     """
     now = _now(now)
     window_start = now - timedelta(days=days)
@@ -478,6 +479,7 @@ def ad_performance(
                 "orders": 0,
                 "paid_orders": 0,
                 "revenue": 0.0,
+                "agent_cost_usd": 0.0,
                 "last_tap": None,
             },
         )
@@ -490,22 +492,31 @@ def ad_performance(
     for taps in taps_by_contact.values():
         taps.sort(key=lambda tap: tap[0])
 
-    for order in orders:
-        placed = _parsed(order.get("created_at"))
-        if not placed or placed < window_start or order.get("source") == "pos":
-            continue
-        if order.get("status") == CANCELLED:
-            continue
-        taps = taps_by_contact.get(str(order.get("contact_id") or ""))
-        if not taps:
-            continue
-        before = [tap for tap in taps if tap[0] <= placed]
+    def credited(row: dict[str, Any]) -> dict[str, Any] | None:
+        """The ad this order or reply belongs to, if any."""
+        at = _parsed(row.get("created_at"))
+        if not at or at < window_start:
+            return None
+        taps = taps_by_contact.get(str(row.get("contact_id") or ""))
+        before = [tap for tap in taps or () if tap[0] <= at]
         if not before:
-            continue
+            return None
         tapped, referral = before[-1]
-        if placed - tapped > timedelta(days=AD_ATTRIBUTION_DAYS):
+        if at - tapped > timedelta(days=AD_ATTRIBUTION_DAYS):
+            return None
+        return ads[ad_key(referral)]
+
+    for row in usage:
+        ad = credited(row)
+        if ad is not None:
+            ad["agent_cost_usd"] += float(row.get("cost_usd") or 0)
+
+    for order in orders:
+        if order.get("source") == "pos" or order.get("status") == CANCELLED:
             continue
-        ad = ads[ad_key(referral)]
+        ad = credited(order)
+        if ad is None:
+            continue
         ad["orders"] += 1
         ad["revenue"] += _money(order.get("total"))
         if order.get("payment_status") == "verified":
@@ -517,6 +528,54 @@ def ad_performance(
         if not ad["chats"] and not ad["orders"]:
             continue
         ad["revenue"] = round(ad["revenue"], 2)
+        ad["agent_cost_usd"] = round(ad["agent_cost_usd"], 4)
         result.append(ad)
     result.sort(key=lambda ad: (ad["revenue"], ad["orders"], ad["chats"]), reverse=True)
     return result
+
+
+def agent_costs(
+    usage: Iterable[dict[str, Any]],
+    orders: Iterable[dict[str, Any]],
+    *,
+    days: int = 30,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """What the WhatsApp agent cost in the window, and per reply, chat and order.
+
+    Orders here are the agent's own — the ones a conversation could have
+    produced — so the per-order figure is not flattered by counter sales.
+    """
+    window_start = _now(now) - timedelta(days=days)
+    rows_in = [r for r in usage if (at := _parsed(r.get("created_at"))) and at >= window_start]
+    total = sum(float(r.get("cost_usd") or 0) for r in rows_in)
+    replies = len(rows_in)
+    chats = len({str(r.get("contact_id")) for r in rows_in if r.get("contact_id")})
+    agent_orders = [
+        o for o in orders
+        if o.get("source") == "agent"
+        and o.get("status") != CANCELLED
+        and (placed := _parsed(o.get("created_at")))
+        and placed >= window_start
+    ]
+
+    def tokens(key: str) -> int:
+        return sum(int(r.get(key) or 0) for r in rows_in)
+
+    return {
+        "days": days,
+        "cost_usd": round(total, 4),
+        "replies": replies,
+        "model_calls": tokens("calls"),
+        "chats": chats,
+        "orders": len(agent_orders),
+        "per_reply_usd": round(total / replies, 4) if replies else 0.0,
+        "per_chat_usd": round(total / chats, 4) if chats else 0.0,
+        "per_order_usd": round(total / len(agent_orders), 4) if agent_orders else None,
+        "tokens": {
+            "input": tokens("input_tokens"),
+            "cached": tokens("cached_tokens"),
+            "cache_write": tokens("cache_write_tokens"),
+            "output": tokens("output_tokens"),
+        },
+    }

@@ -449,6 +449,7 @@ class AnalyticsResponse(BaseModel):
     acquisition: dict[str, Any] = Field(default_factory=dict)
     segments: dict[str, int] = Field(default_factory=dict)
     ads: list[dict[str, Any]] = Field(default_factory=list)
+    agent_cost: dict[str, Any] = Field(default_factory=dict)
     messages: dict[str, Any] = Field(default_factory=dict)
 
 

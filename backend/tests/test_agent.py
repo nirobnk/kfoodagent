@@ -356,8 +356,10 @@ def test_clean_reply_strips_markdown_for_whatsapp():
 
 
 def test_clean_reply_caps_length():
-    cleaned = clean_reply("word " * 400)
-    assert len(cleaned) <= 901
+    from agent.graph import MAX_REPLY_CHARS
+
+    cleaned = clean_reply("word " * 1000)
+    assert len(cleaned) <= MAX_REPLY_CHARS + 1
     assert cleaned.endswith("…")
 
 
@@ -404,6 +406,57 @@ def test_a_truncated_search_tells_the_agent_to_say_how_many_are_missing():
     assert "+4 more products not shown" in text
     assert "NOT the full range" in text
     assert "tell the customer there are 4 more" in text
+
+
+def test_a_long_list_shows_singles_and_one_rule_for_the_bigger_packs():
+    """Every search token is billed as a cache write, the dearest input."""
+    from agent.tools.menu import PACK_RULE, format_products
+
+    def product(i: int, five: float = 3250) -> dict:
+        return {
+            "product_name": f"Ramen {i}", "brand": "Nongshim", "korean_name": "라면",
+            "category": "Instant Noodles", "pack_size": "120g", "heat_level": 3,
+            "track_stock": True, "stock_quantity": 1000,
+            "variants": [
+                {"label": "Single Pack", "price": 650, "sku": f"R{i}-1", "units": 1},
+                {"label": "5 Pack", "price": five, "sku": f"R{i}-5", "units": 5},
+                {"label": "Carton (20)", "price": 13000, "sku": f"R{i}-20", "units": 20},
+            ],
+        }
+
+    text = format_products([product(i) for i in range(7)] + [product(99, five=3000)])
+
+    assert "Single Pack Rs. 650 [R0-1]" in text
+    assert "[R0-5]" not in text, "rule-priced packs are left to the rule"
+    assert PACK_RULE in text
+    assert "5 Pack Rs. 3,000 [R99-5]" in text, "a pack priced off the rule is shown in full"
+    assert "라면" not in text and "120g" not in text
+    assert "singles in stock" not in text
+    assert "(Anything without a stock note is in stock.)" in text
+
+
+def test_a_short_list_still_shows_every_size():
+    from agent.tools.menu import PACK_RULE, format_products
+
+    text = format_products([{
+        "product_name": "Shin", "variants": [
+            {"label": "Single Pack", "price": 650, "sku": "S-1", "units": 1},
+            {"label": "5 Pack", "price": 3250, "sku": "S-5", "units": 5},
+        ],
+    }])
+
+    assert "5 Pack Rs. 3,250 [S-5]" in text
+    assert PACK_RULE not in text
+
+
+async def test_a_product_name_is_not_widened_to_every_noodle(tool_env):
+    """"shin ramyun" used to expand "ramyun" to "noodle" and list the shelf."""
+    _, _, config = tool_env
+
+    result = await search_menu.ainvoke({"query": "shin ramyun"}, config=config)
+
+    assert "Shin Ramyun Original" in result
+    assert "Hot Dak" not in result
 
 
 def test_a_complete_search_carries_no_truncation_notice():
@@ -1213,3 +1266,14 @@ def test_adding_to_an_order_does_not_become_a_question_for_staff():
     assert "Wants to ADD something to an order they already have" in prompt
     assert "create a new one with create_order" in prompt
     assert "Never answer this with a question about whether someone should do it" in prompt
+
+
+def test_a_full_price_list_is_not_cut_off():
+    """Chirantha asked for every price on Sept 30 and the reply stopped at
+    "Hot Dak Stir-Fry Ramen…"."""
+    price_list = "\n".join(
+        f"Hot Dak Stir-Fry Ramen Flavour {i} - Rs. 750" for i in range(26)
+    ) + "\n\n5 Packs and cartons of 20 are available too 😊"
+
+    assert len(price_list) > 1100
+    assert clean_reply(price_list) == price_list

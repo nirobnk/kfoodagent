@@ -72,6 +72,7 @@ def db_modules() -> tuple:
         db.faqs,
         db.inventory,
         db.invoices,
+        db.llm_usage,
         db.menu,
         db.messages,
         db.notes,

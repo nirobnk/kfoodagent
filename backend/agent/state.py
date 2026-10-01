@@ -8,6 +8,8 @@ from typing import Annotated, Any, TypedDict
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
+from agent.usage import TokenUsage
+
 
 class AgentState(TypedDict, total=False):
     wa_id: str
@@ -44,6 +46,7 @@ class RunContext:
     notes_added: list[str] = field(default_factory=list)
     photos_sent: list[str] = field(default_factory=list)
     tools_called: list[str] = field(default_factory=list)
+    usage: TokenUsage = field(default_factory=TokenUsage)
 
     @property
     def contact_id(self) -> str:
