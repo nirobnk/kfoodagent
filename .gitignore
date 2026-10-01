@@ -82,3 +82,5 @@ temp/
 *.sqlite3
 *.db
 run.txt
+# Eval run outputs
+backend/evals/results/
