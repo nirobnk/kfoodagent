@@ -2,7 +2,7 @@ from .dietary import find_dietary_options
 from .escalate import escalate_to_human, flag_for_staff
 from .menu import product_details, search_menu
 from .notes import save_note
-from .orders import check_order_status, create_order
+from .orders import check_order_status, create_order, quote_order
 from .payments import payment_details, record_payment_receipt
 from .photos import send_product_photo
 from .recommend import suggest_products
@@ -15,6 +15,7 @@ TOOLS = [
     product_details,
     store_info,
     payment_details,
+    quote_order,
     create_order,
     check_order_status,
     record_payment_receipt,
@@ -32,6 +33,7 @@ __all__ = [
     "product_details",
     "store_info",
     "payment_details",
+    "quote_order",
     "create_order",
     "check_order_status",
     "record_payment_receipt",

@@ -35,6 +35,7 @@ os.environ.update(
         "ENVIRONMENT": "development",
         "REQUIRE_AUTH": "false",
         "LOG_LEVEL": "WARNING",
+        "REPLY_BATCH_SECONDS": "0",
     }
 )
 

@@ -439,3 +439,90 @@ async def test_escalation_from_the_agent_is_respected(wired, monkeypatch):
 
     assert fake.rows("contacts")[0]["human_takeover"] is True
     assert wa.texts[0][1] == "A team member will reply shortly."
+
+
+# --- a burst of messages gets one reply ---------------------------------------
+
+async def test_messages_sent_a_moment_apart_get_one_reply(wired, monkeypatch):
+    """"Epa epa" and "Mn kiynnm" a second apart were each answered on their
+    own, and the customer got the same reply twice."""
+    import asyncio
+
+    fake, wa, calls = wired
+    monkeypatch.setattr(handlers.settings, "reply_batch_seconds", 0.05)
+
+    await asyncio.gather(
+        handlers.process_inbound(inbound("Hi! I want to order Korean ramen", "wamid.A"), BUSINESS_ID),
+        handlers.process_inbound(inbound("price?", "wamid.B"), BUSINESS_ID),
+    )
+
+    assert calls == ["price?"], "one agent run, answering the last message"
+    assert len(wa.texts) == 1
+    assert len([m for m in fake.rows("messages") if m["direction"] == "in"]) == 2
+    assert handlers._chats == {}, "per-customer state is cleaned up"
+
+
+async def test_messages_far_apart_are_each_answered(wired, monkeypatch):
+    fake, wa, calls = wired
+    monkeypatch.setattr(handlers.settings, "reply_batch_seconds", 0.01)
+
+    await handlers.process_inbound(inbound("first", "wamid.A"), BUSINESS_ID)
+    await handlers.process_inbound(inbound("second", "wamid.B"), BUSINESS_ID)
+
+    assert calls == ["first", "second"]
+    assert len(wa.texts) == 2
+
+
+async def test_a_sticker_does_not_swallow_the_reply_to_a_question(wired, monkeypatch):
+    """A sticker never gets an answer, so it must not take over the burst."""
+    import asyncio
+
+    fake, wa, calls = wired
+    monkeypatch.setattr(handlers.settings, "reply_batch_seconds", 0.05)
+
+    await asyncio.gather(
+        handlers.process_inbound(inbound("how much is shin?", "wamid.A"), BUSINESS_ID),
+        handlers.process_inbound(inbound(None, "wamid.STK", mtype="sticker"), BUSINESS_ID),
+    )
+
+    assert calls == ["how much is shin?"]
+    assert len(wa.texts) == 1
+
+
+async def test_a_slip_followed_by_paid_keeps_the_slip(wired, monkeypatch):
+    """Answered together, the receipt must still point at the photo, not at
+    the word "paid" typed after it."""
+    import asyncio
+
+    fake, wa, _ = wired
+    monkeypatch.setattr(handlers.settings, "reply_batch_seconds", 0.05)
+    wa.media_downloads["media-slip"] = DownloadedMedia(
+        content=b"slip", mime_type="image/jpeg", filename="slip.jpg"
+    )
+
+    async def describe(media, *, catalogue):
+        return ImageAnalysis(kind="payment_slip", description="HNB transfer Rs. 1,050")
+
+    async def payment_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
+        return AgentReply(text="Thanks, I will check it.", payment_reported=True)
+
+    monkeypatch.setattr(handlers, "describe_image", describe)
+    monkeypatch.setattr(handlers, "run_agent", payment_agent)
+
+    await asyncio.gather(
+        handlers.process_inbound(
+            inbound(None, "wamid.SLIP", mtype="image", media_id="media-slip",
+                    media_mime="image/jpeg"),
+            BUSINESS_ID,
+        ),
+        handlers.process_inbound(inbound("paid", "wamid.PAID"), BUSINESS_ID),
+    )
+
+    receipts = fake.rows("payment_receipts")
+    assert len(receipts) == 1
+    assert receipts[0]["whatsapp_media_id"] == "media-slip"
+    assert receipts[0]["storage_status"] == "stored"
+    slip_row = next(m for m in fake.rows("messages") if m.get("wa_message_id") == "wamid.SLIP")
+    assert receipts[0]["message_id"] == slip_row["id"]
+    assert receipts[0]["reported_detail"] == "paid"
+    assert len(wa.texts) == 1

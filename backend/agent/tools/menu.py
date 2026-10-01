@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
@@ -111,6 +112,16 @@ def format_products(products: list[dict[str, Any]]) -> str:
     return text
 
 
+def split_query(query: str) -> list[str]:
+    """One search term per product the customer named.
+
+    "carbo and cheese" or "shin black, kimchi" is two products, and searched
+    as one phrase it finds whichever matches best and silently loses the rest.
+    """
+    parts = re.split(r"\s*(?:,|/|&|\+|\n|\band\b|\bsaha\b)\s*", query or "", flags=re.IGNORECASE)
+    return [p for p in (part.strip() for part in parts) if p]
+
+
 @tool
 async def search_menu(query: str, config: RunnableConfig) -> str:
     """Search the K FOOD catalogue for products, prices and pack sizes.
@@ -122,12 +133,21 @@ async def search_menu(query: str, config: RunnableConfig) -> str:
     Args:
         query: What the customer asked for — a product name ("shin ramyun"), a
             brand ("nongshim"), a category ("drinks", "cup noodles"), or an
-            empty string to list the whole catalogue.
+            empty string to list the whole catalogue. For several products,
+            separate them with commas: "hot dak carbo, hot dak cheese".
     """
     ctx = run_context(config)
     ctx.tools_called.append("search_menu")
 
-    products = await db.menu.search_products(ctx.business_id, query)
+    terms = split_query(query)
+    if len(terms) <= 1:
+        products = await db.menu.search_products(ctx.business_id, query)
+    else:
+        seen: dict[str, dict[str, Any]] = {}
+        for term in terms:
+            for product in await db.menu.search_products(ctx.business_id, term):
+                seen.setdefault(str(product.get("product_name")), product)
+        products = list(seen.values())
     log.info("tool search_menu", extra={"query": query, "products": len(products)})
     return format_products(products)
 

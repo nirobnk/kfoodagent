@@ -5,16 +5,18 @@ Order of operations for an inbound message — this order matters:
   2. contact upsert
   3. persist the message
   4. touch the 24-hour window
-  5. human_takeover check (the agent stays silent while staff are handling it)
-  6. run the agent
-  7. send exactly one reply
+  5. wait briefly for the customer's next message, and let the last one of a
+     burst answer for all of them
+  6. human_takeover check (the agent stays silent while staff are handling it)
+  7. run the agent
+  8. send exactly one reply
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Any
 
 import db
@@ -26,10 +28,6 @@ from vision import describe_image
 from whatsapp import InboundMessage, StatusUpdate, get_client
 
 log = logging.getLogger(__name__)
-
-# One agent run at a time per contact: two messages sent in quick succession
-# must not produce two overlapping replies.
-_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 # Media the agent cannot open. It still answers these: the commonest
 # attachment this shop receives is a bank slip sent with no caption at all,
@@ -47,29 +45,113 @@ AGENT_HANDLED_MEDIA = {"image", "video", "document", "audio", "voice"}
 TAKEOVER_ACK = "Got your message 🙏 I'm looking into this now and will come back to you shortly."
 
 
+@dataclass(slots=True)
+class Prepared:
+    """One inbound message, saved and ready for the agent to read."""
+
+    message: InboundMessage
+    contact: dict[str, Any]
+    saved: dict[str, Any]
+    incoming_text: str
+    client: Any
+
+
+@dataclass
+class _Chat:
+    """One customer's messages while they are being handled.
+
+    Saving is serialised by `prepare`, replying by `reply`, so a message can be
+    saved while the reply to the one before it is still being written.
+    `latest` is the newest message that wants an answer: a message that is no
+    longer the latest once its wait is over leaves the answer to the newer
+    one, which reads both. `batch` holds the saved messages that reply will
+    cover.
+
+    Before this, "Epa epa" and "Mn kiynnm" sent a second apart were each
+    answered on their own, and the customer got the same reply twice.
+    """
+
+    prepare: asyncio.Lock = field(default_factory=asyncio.Lock)
+    reply: asyncio.Lock = field(default_factory=asyncio.Lock)
+    latest: str | None = None
+    batch: list[Prepared] = field(default_factory=list)
+    users: int = 0
+
+
+_chats: dict[str, _Chat] = {}
+
+
+def _expects_reply(message: InboundMessage) -> bool:
+    return message.is_supported or message.type in AGENT_HANDLED_MEDIA
+
+
 async def process_inbound(message: InboundMessage, business_id: str | None = None) -> None:
     """Handle one inbound WhatsApp message. Never raises."""
     business_id = business_id or settings.business_id
+    chat = _chats.setdefault(message.wa_id, _Chat())
+    chat.users += 1
     try:
         if await db.messages.exists(message.wa_message_id):
             log.info("duplicate webhook delivery ignored",
                      extra={"wa_message_id": message.wa_message_id})
             return
 
-        async with _locks[message.wa_id]:
-            await _process(message, business_id)
+        expects_reply = _expects_reply(message)
+        if expects_reply:
+            chat.latest = message.wa_message_id
+
+        try:
+            async with chat.prepare:
+                prepared = await _prepare(message, business_id)
+        except Exception:
+            log.exception(
+                "inbound processing failed",
+                extra={"wa_id": message.wa_id, "wa_message_id": message.wa_message_id},
+            )
+            # Earlier messages were left for this one to answer. Answer them.
+            if chat.latest == message.wa_message_id and chat.batch:
+                await _answer_batch(chat, message.wa_message_id, business_id)
+            return
+        if prepared is None:
+            return
+
+        if not expects_reply:
+            # Nothing to say to a sticker, but a chat in takeover still gets
+            # its one acknowledgement.
+            async with chat.reply:
+                await _respond([prepared], business_id)
+            return
+
+        chat.batch.append(prepared)
+        if settings.reply_batch_seconds:
+            await asyncio.sleep(settings.reply_batch_seconds)
+        if chat.latest != message.wa_message_id:
+            log.info("answered together with a later message",
+                     extra={"wa_message_id": message.wa_message_id})
+            return
+        await _answer_batch(chat, message.wa_message_id, business_id)
     except Exception:
         log.exception(
             "inbound processing failed",
             extra={"wa_id": message.wa_id, "wa_message_id": message.wa_message_id},
         )
     finally:
-        lock = _locks.get(message.wa_id)
-        if lock is not None and not lock.locked():
-            _locks.pop(message.wa_id, None)
+        chat.users -= 1
+        if chat.users == 0:
+            _chats.pop(message.wa_id, None)
 
 
-async def _process(message: InboundMessage, business_id: str) -> None:
+async def _answer_batch(chat: _Chat, wa_message_id: str, business_id: str) -> None:
+    async with chat.reply:
+        # A newer message may have arrived while the last reply was going out;
+        # it answers for this batch, so do not answer twice.
+        if chat.latest != wa_message_id or not chat.batch:
+            return
+        batch, chat.batch = chat.batch, []
+        await _respond(batch, business_id)
+
+
+async def _prepare(message: InboundMessage, business_id: str) -> Prepared | None:
     contact = await db.contacts.get_or_create(
         business_id, message.wa_id, name=message.profile_name
     )
@@ -96,7 +178,7 @@ async def _process(message: InboundMessage, business_id: str) -> None:
         # Another delivery of the same message won the race.
         log.info("duplicate message row, stopping",
                  extra={"wa_message_id": message.wa_message_id})
-        return
+        return None
 
     # Opens the 24-hour free-text window.
     contact = (
@@ -120,6 +202,26 @@ async def _process(message: InboundMessage, business_id: str) -> None:
         # must not be passed off as their words.
         await _process_image(message, str(saved["id"]), business_id, contact_id, client)
 
+    return Prepared(
+        message=message,
+        contact=contact,
+        saved=saved,
+        incoming_text=incoming_text,
+        client=client,
+    )
+
+
+async def _respond(batch: list[Prepared], business_id: str) -> None:
+    """Answer a burst of messages once, as a reply to the last of them.
+
+    Every message in the burst is already saved, so the agent reads them all
+    in its history.
+    """
+    last = batch[-1]
+    message = last.message
+    contact = last.contact
+    contact_id = str(contact["id"])
+
     if contact.get("human_takeover"):
         # The agent stays out of it — but silence is not a neutral act. A
         # customer who wrote "I need shin red one noodles packet" and then
@@ -130,14 +232,14 @@ async def _process(message: InboundMessage, business_id: str) -> None:
         log.info("human is handling this chat, agent silent", extra={"contact_id": contact_id})
         return
 
-    if not message.is_supported and message.type not in AGENT_HANDLED_MEDIA:
+    if not _expects_reply(message):
         log.info("ignoring unsupported message type", extra={"type": message.type})
         return
 
     reply = await run_agent(
         business_id=business_id,
         contact=contact,
-        incoming_text=incoming_text,
+        incoming_text=last.incoming_text,
     )
 
     if reply.escalated:
@@ -163,22 +265,30 @@ async def _process(message: InboundMessage, business_id: str) -> None:
                 "order_number": (reply.payment_order or {}).get("order_number"),
             },
         )
+        # The slip is the newest photo or file in the burst: "paid" typed a
+        # second after the screenshot is about the screenshot.
+        slip = next(
+            (p for p in reversed(batch)
+             if p.message.media_id and p.message.type in {"image", "document"}),
+            last,
+        )
         try:
             has_receipt_media = bool(
-                message.media_id and message.type in {"image", "document"}
+                slip.message.media_id and slip.message.type in {"image", "document"}
             )
             receipt = await db.payment_receipts.create(
                 business_id=business_id,
                 contact_id=contact_id,
                 order_id=(reply.payment_order or {}).get("id"),
-                message_id=str(saved["id"]),
-                whatsapp_media_id=message.media_id,
-                media_mime_type=message.media_mime,
+                message_id=str(slip.saved["id"]),
+                whatsapp_media_id=slip.message.media_id,
+                media_mime_type=slip.message.media_mime,
                 reported_detail=(
-                    (message.text or "").strip()
+                    (slip.message.text or "").strip()
+                    or (message.text or "").strip()
                     or (
                         "Receipt submitted through WhatsApp"
-                        if message.media_id
+                        if slip.message.media_id
                         else "Payment reported in chat"
                     )
                 ),
@@ -186,18 +296,18 @@ async def _process(message: InboundMessage, business_id: str) -> None:
             )
             if has_receipt_media:
                 await _store_receipt_media(
-                    message=message,
+                    message=slip.message,
                     receipt=receipt,
                     business_id=business_id,
                     contact_id=contact_id,
-                    client=client,
+                    client=slip.client,
                 )
         except Exception:
             # Do not strand a paying customer because the audit write failed.
             # The order/task created by record_payment_receipt still remains.
             log.exception(
                 "could not store payment receipt record",
-                extra={"contact_id": contact_id, "message_id": saved.get("id")},
+                extra={"contact_id": contact_id, "message_id": slip.saved.get("id")},
             )
 
     result = await outbound.send_text(

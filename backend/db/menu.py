@@ -158,7 +158,10 @@ async def search(business_id: str, query: str, limit: int = 60) -> list[dict[str
     if found:
         return found
 
-    words = [w for w in term.split() if len(w) > 2][:4]
+    # Deduplicated before the cap: "Hot Dak Carbo Hot Dak Cheese" kept "Hot"
+    # twice and dropped "Cheese", matched Carbo alone, and the agent told a
+    # customer Hot Dak Cheese was not on the shelf while 1,000 sat in stock.
+    words = list(dict.fromkeys(w for w in term.split() if len(w) > 2))[:4]
     if not words:
         return []
 
