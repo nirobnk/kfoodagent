@@ -13,7 +13,27 @@ log = logging.getLogger(__name__)
 
 TABLE = "messages"
 MEDIA_BUCKET = "message-media"
-MEDIA_EXTENSIONS = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+MEDIA_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    # What staff can send from the dashboard, kept so the chat shows it.
+    "video/mp4": ".mp4",
+    "video/3gpp": ".3gp",
+    "audio/aac": ".aac",
+    "audio/amr": ".amr",
+    "audio/mpeg": ".mp3",
+    "audio/mp4": ".m4a",
+    "audio/ogg": ".ogg",
+    "application/pdf": ".pdf",
+    "text/plain": ".txt",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.ms-excel": ".xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "application/vnd.ms-powerpoint": ".ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+}
 
 
 async def exists(wa_message_id: str) -> bool:
@@ -167,7 +187,10 @@ async def store_media(
     content: bytes,
     mime_type: str,
 ) -> None:
-    """Copy an inbound photo into private storage and point the message at it."""
+    """Copy a message's photo or file into private storage and point the message at it.
+
+    Inbound photos customers send, and the photos and files staff send.
+    """
     clean_mime = mime_type.split(";", 1)[0].strip().lower()
     extension = MEDIA_EXTENSIONS.get(clean_mime)
     if extension is None:

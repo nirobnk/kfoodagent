@@ -168,6 +168,35 @@ class WhatsAppClient:
         }
         return await self._send(payload, wa_id=wa_id, kind="image")
 
+    async def send_media(
+        self,
+        wa_id: str,
+        kind: str,
+        media_id: str,
+        *,
+        caption: str = "",
+        filename: str | None = None,
+    ) -> str:
+        """Send an uploaded image, video, audio file or document. 24-hour window only.
+
+        Meta shows a caption under an image, a video or a document, but not
+        under audio, and a document needs its file name or the customer sees
+        "Untitled".
+        """
+        media: dict[str, Any] = {"id": media_id}
+        if caption and kind in ("image", "video", "document"):
+            media["caption"] = caption[:1024]
+        if kind == "document" and filename:
+            media["filename"] = filename[:240]
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": wa_id,
+            "type": kind,
+            kind: media,
+        }
+        return await self._send(payload, wa_id=wa_id, kind=kind)
+
     async def send_template(
         self,
         wa_id: str,

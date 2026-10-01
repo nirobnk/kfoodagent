@@ -8,7 +8,17 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 
@@ -235,6 +245,57 @@ async def send_message(
     )
 
 
+# The largest file staff can send; outbound.MEDIA_KINDS holds the per-kind limits.
+MAX_UPLOAD_BYTES = max(limit for _, limit in outbound.MEDIA_KINDS.values())
+
+
+@app.post("/messages/send-media", response_model=schemas.SendMessageResponse)
+async def send_media_message(
+    contact_id: str = Form(...),
+    caption: str = Form(""),
+    take_over: bool = Form(True),
+    file: UploadFile = File(...),
+    staff: Principal = Depends(require_staff),
+) -> schemas.SendMessageResponse:
+    """Send a photo, video, audio file or document from the dashboard."""
+    send_limiter.check(staff.user_id)
+    contact = await _contact_or_404(contact_id)
+
+    # Read one byte past the limit, so an oversized upload is refused without
+    # holding all of it.
+    content = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        return schemas.SendMessageResponse(ok=False, reason="file_too_large")
+    # Refused before the chat changes hands, so a wrong file type does not
+    # silence the agent for nothing.
+    if outbound.media_kind(file.content_type or "", file.filename or "") is None:
+        return schemas.SendMessageResponse(ok=False, reason="unsupported_file")
+
+    if take_over and not contact.get("human_takeover"):
+        contact = (
+            await db.contacts.set_takeover(BUSINESS_ID, contact["id"], True, by=staff.label)
+            or contact
+        )
+
+    result = await outbound.send_media(
+        business_id=BUSINESS_ID,
+        contact=contact,
+        content=content,
+        mime_type=file.content_type or "",
+        filename=file.filename or "",
+        caption=caption,
+        sender="human",
+    )
+    log.info(
+        "staff media",
+        extra={"staff": staff.label, "contact_id": contact["id"], "ok": result.ok,
+               "reason": result.reason, "bytes": len(content), "mime": file.content_type},
+    )
+    return schemas.SendMessageResponse(
+        ok=result.ok, wa_message_id=result.wa_message_id, reason=result.reason
+    )
+
+
 @app.post("/messages/send-template", response_model=schemas.SendMessageResponse)
 async def send_template_message(
     payload: schemas.SendTemplateRequest,
@@ -419,7 +480,7 @@ async def receipt_file(
 async def message_media(
     message_id: str, staff: Principal = Depends(require_staff)
 ) -> schemas.MessageMediaResponse:
-    """Give staff short-lived access to a photo a customer sent."""
+    """Short-lived access to a stored photo or file: one a customer sent, or staff did."""
     expires_in = 300
     url = await db.messages.signed_media_url(BUSINESS_ID, message_id, expires_in=expires_in)
     if url is None:

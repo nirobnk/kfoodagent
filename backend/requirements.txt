@@ -34,7 +34,7 @@
 # Direct dependencies, for reference when bumping:
 #   fastapi uvicorn[standard] httpx pydantic pydantic-settings python-dotenv
 #   supabase langgraph langgraph-prebuilt langchain-core langchain-google-genai
-#   langchain-openai tenacity PyJWT pillow
+#   langchain-openai tenacity PyJWT pillow python-multipart
 #
 # Optional extra provider — add deliberately if LLM_PROVIDER=anthropic:
 #   langchain-anthropic
@@ -98,6 +98,8 @@ pydantic-settings==2.15.0
 pydantic_core==2.46.5
 PyJWT==2.14.0
 python-dotenv==1.2.3
+# Pure Python, no dependencies: FastAPI needs it to accept staff file uploads.
+python-multipart==0.0.32
 PyYAML==6.0.3
 realtime==2.31.0
 regex==2026.9.10
