@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import mimetypes
 import time
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
@@ -211,6 +212,147 @@ async def send_image(
         wa_message_id=wa_message_id or None,
         status="sent",
     )
+    return SendResult(ok=True, wa_message_id=wa_message_id)
+
+
+# What WhatsApp accepts in each kind of media message, and the most we send.
+# Meta takes documents up to 100 MB; 25 MB keeps an upload from the dashboard
+# inside what the backend comfortably holds in memory.
+MEDIA_KINDS: dict[str, tuple[set[str], int]] = {
+    "image": ({"image/jpeg", "image/png"}, 5 * 1024 * 1024),
+    "video": ({"video/mp4", "video/3gpp"}, 16 * 1024 * 1024),
+    "audio": ({"audio/aac", "audio/amr", "audio/mpeg", "audio/mp4", "audio/ogg"}, 16 * 1024 * 1024),
+    "document": (
+        {
+            "application/pdf",
+            "text/plain",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        },
+        25 * 1024 * 1024,
+    ),
+}
+# Photos WhatsApp will not take as an image but Pillow can turn into a JPEG.
+CONVERTIBLE_IMAGES = {"image/webp", "image/gif", "image/bmp"}
+# What browsers and phones call some of the same types.
+MIME_ALIASES = {
+    "image/jpg": "image/jpeg",
+    "image/pjpeg": "image/jpeg",
+    "audio/mp3": "audio/mpeg",
+    "audio/x-m4a": "audio/mp4",
+    "audio/m4a": "audio/mp4",
+    "audio/x-aac": "audio/aac",
+    "video/quicktime": "",  # .mov: WhatsApp refuses it, so name it as unsupported
+}
+MEDIA_LABELS = {"image": "[photo]", "video": "[video]", "audio": "[audio]"}
+
+
+def media_kind(mime_type: str, filename: str) -> tuple[str, str] | None:
+    """(kind, mime) WhatsApp will accept for this file, or None if it will not."""
+    mime = (mime_type or "").split(";", 1)[0].strip().lower()
+    if not mime or mime == "application/octet-stream":
+        mime = (mimetypes.guess_type(filename or "")[0] or "").lower()
+    mime = MIME_ALIASES.get(mime, mime)
+    if mime in CONVERTIBLE_IMAGES:
+        return "image", mime
+    for kind, (accepted, _) in MEDIA_KINDS.items():
+        if mime in accepted:
+            return kind, mime
+    return None
+
+
+async def send_media(
+    *,
+    business_id: str,
+    contact: Mapping[str, Any],
+    content: bytes,
+    mime_type: str,
+    filename: str,
+    caption: str = "",
+    sender: str = "human",
+) -> SendResult:
+    """Send a photo, video, voice/audio file or document a person chose.
+
+    Same rules as text: only inside the 24-hour window, and logged in
+    `messages`. A copy goes to private storage so the dashboard can show staff
+    what the customer was sent.
+    """
+    if not content:
+        return SendResult(ok=False, reason="empty_file")
+    matched = media_kind(mime_type, filename)
+    if matched is None:
+        return SendResult(ok=False, reason="unsupported_file")
+    kind, mime = matched
+
+    if not can_send_free_text(contact):
+        log.warning(
+            "media blocked: 24h window closed",
+            extra={"wa_id": contact.get("wa_id"), "contact_id": contact.get("id")},
+        )
+        return SendResult(ok=False, reason="window_closed")
+
+    name = (filename or "").strip().rsplit("/", 1)[-1] or f"file.{mime.rsplit('/', 1)[-1]}"
+    if mime in CONVERTIBLE_IMAGES:
+        try:
+            content = await asyncio.to_thread(_to_jpeg, content)
+        except Exception:
+            return SendResult(ok=False, reason="unsupported_file")
+        mime = "image/jpeg"
+        name = name.rsplit(".", 1)[0] + ".jpg"
+    if len(content) > MEDIA_KINDS[kind][1]:
+        return SendResult(ok=False, reason="file_too_large")
+
+    caption = (caption or "").strip()
+    if kind == "document":
+        body = f"📄 {name}" + (f"\n{caption}" if caption else "")
+    else:
+        body = caption or MEDIA_LABELS[kind]
+
+    client = get_client()
+    try:
+        media_id = await client.upload_media(content, mime, name)
+        wa_message_id = await client.send_media(
+            contact["wa_id"], kind, media_id, caption=caption, filename=name
+        )
+    except WhatsAppError as exc:
+        await db.messages.save(
+            business_id=business_id,
+            contact_id=contact["id"],
+            direction="out",
+            sender=sender,
+            body=body,
+            message_type=kind,
+            status="failed",
+            error=str(exc)[:500],
+        )
+        return SendResult(ok=False, reason=f"send_failed:{exc.code or 'unknown'}")
+
+    saved = await db.messages.save(
+        business_id=business_id,
+        contact_id=contact["id"],
+        direction="out",
+        sender=sender,
+        body=body,
+        message_type=kind,
+        wa_message_id=wa_message_id or None,
+        status="sent",
+    )
+    if saved is not None:
+        try:
+            await db.messages.store_media(
+                message_id=str(saved["id"]),
+                business_id=business_id,
+                contact_id=str(contact["id"]),
+                content=content,
+                mime_type=mime,
+            )
+        except Exception:
+            # The customer has it; only the dashboard copy is missing.
+            log.warning("sent media could not be kept for the dashboard", exc_info=True)
     return SendResult(ok=True, wa_message_id=wa_message_id)
 
 

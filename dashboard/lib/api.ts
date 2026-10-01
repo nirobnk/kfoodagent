@@ -46,10 +46,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError('Your session expired. Please sign in again.', 401);
   }
 
+  // A file upload carries its own multipart Content-Type, boundary included;
+  // setting JSON here would break it.
+  const isForm = init.body instanceof FormData;
   const response = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isForm ? {} : { 'Content-Type': 'application/json' }),
       Authorization: `Bearer ${session.access_token}`,
       ...(init.headers ?? {}),
     },
@@ -83,6 +86,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ contact_id: contactId, body, take_over: takeOver }),
     });
+  },
+
+  sendMedia(contactId: string, file: File, caption = '', takeOver = true) {
+    const form = new FormData();
+    form.append('contact_id', contactId);
+    form.append('caption', caption);
+    form.append('take_over', String(takeOver));
+    form.append('file', file, file.name);
+    return request<SendResult>('/messages/send-media', { method: 'POST', body: form });
   },
 
   sendTemplate(contactId: string, templateKey: string, variables: string[]) {
@@ -317,6 +329,12 @@ export function explainSendFailure(reason: string | null): string {
       return 'That template needs a different number of values.';
     case 'empty_body':
       return 'Type a message first.';
+    case 'empty_file':
+      return 'That file is empty.';
+    case 'unsupported_file':
+      return 'WhatsApp cannot send that kind of file. Photos (JPG, PNG), MP4 videos, audio, PDF and Office documents work.';
+    case 'file_too_large':
+      return 'That file is too big. Photos up to 5 MB, video and audio up to 16 MB, documents up to 25 MB.';
     default:
       return reason?.startsWith('send_failed')
         ? 'WhatsApp rejected the message. Check the logs.'

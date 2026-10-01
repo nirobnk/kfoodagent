@@ -473,6 +473,7 @@ class FakeWhatsApp:
         self.images: list[tuple[str, str, str]] = []
         self.image_media_ids: list[str | None] = []
         self.uploads: list[tuple[bytes, str, str]] = []
+        self.media: list[tuple[str, str, str, str, str | None]] = []
         self.read_receipts: list[str] = []
         self.media_downloads: dict[str, Any] = {}
         self.downloaded_media_ids: list[str] = []
@@ -503,6 +504,16 @@ class FakeWhatsApp:
         self.templates.append((wa_id, name, list(variables)))
         self._counter += 1
         return f"wamid.TPL{self._counter}"
+
+    async def send_media(
+        self, wa_id: str, kind: str, media_id: str, *, caption: str = "",
+        filename: str | None = None,
+    ) -> str:
+        if self.fail_with:
+            raise self.fail_with
+        self.media.append((wa_id, kind, media_id, caption, filename))
+        self._counter += 1
+        return f"wamid.MEDIA{self._counter}"
 
     async def upload_media(self, content: bytes, mime_type: str, filename: str) -> str:
         self.uploads.append((content, mime_type, filename))
