@@ -260,7 +260,10 @@ async def test_an_order_created_during_the_run_is_returned(env, monkeypatch):
                 tool_calls=[
                     {
                         "name": "create_order",
-                        "args": {"items": [{"sku": "RAM-SHIN-5", "quantity": 1}]},
+                        "args": {
+                            "items": [{"sku": "RAM-SHIN-5", "quantity": 1}],
+                            "delivery_note": "Nimal Perera, 12 Galle Road, Colombo 03",
+                        },
                         "id": "c1",
                     }
                 ],

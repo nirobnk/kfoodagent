@@ -15,6 +15,7 @@ from agent.tools import (
     flag_for_staff,
     payment_details,
     product_details,
+    quote_order,
     record_payment_receipt,
     save_note,
     search_menu,
@@ -24,6 +25,8 @@ from agent.tools import (
 )
 from tests.conftest import BUSINESS_ID, db_modules
 from tests.fakes import FakeSupabase, seed_kfood
+
+ADDRESS = "Nimal Perera, 12 Galle Road, Colombo 03"
 
 CONTACT = {
     "id": "22222222-2222-2222-2222-222222222222",
@@ -96,6 +99,27 @@ async def test_shin_red_means_the_red_super_spicy_not_the_red_packet(tool_env):
     assert "Shin Ramyun Red Super Spicy" in result
     assert "Shin Ramyun Original" not in result
     assert detail["product_name"] == "Shin Ramyun Red Super Spicy"
+
+
+async def test_search_menu_finds_every_product_named_at_once(tool_env):
+    """"Carbo and cheese" found Carbo alone, and the agent told the customer
+    Hot Dak Cheese was not on the shelf."""
+    _, _, config = tool_env
+
+    listed = await search_menu.ainvoke({"query": "shin ramyun, banana milk"}, config=config)
+    joined = await search_menu.ainvoke({"query": "shin ramyun and banana milk"}, config=config)
+
+    for result in (listed, joined):
+        assert "Shin Ramyun Original" in result
+        assert "Binggrae Banana Flavoured Milk" in result
+
+
+async def test_a_repeated_word_does_not_push_a_product_out_of_the_search(tool_env):
+    """"Hot Dak Carbo Hot Dak Cheese" kept "Hot" twice in its four words and
+    lost "Cheese"."""
+    products = await db.menu.search_products(BUSINESS_ID, "Hot Dak Hot Dak Binggrae")
+
+    assert "Binggrae Banana Flavoured Milk" in [p["product_name"] for p in products]
 
 
 async def test_search_menu_finds_a_product_by_brand_or_category(tool_env):
@@ -212,7 +236,7 @@ async def test_delivery_is_free_over_the_threshold(tool_env):
     fake, _, config = tool_env
 
     result = await create_order.ainvoke(
-        {"items": [{"sku": "RAM-SHIN-5", "quantity": 2}]}, config=config
+        {"items": [{"sku": "RAM-SHIN-5", "quantity": 2}], "delivery_note": ADDRESS}, config=config
     )
 
     assert "delivery free" in result
@@ -234,11 +258,42 @@ async def test_create_order_refuses_a_sku_that_does_not_exist(tool_env):
 
 
 async def test_create_order_asks_for_an_address_when_none_was_given(tool_env):
-    _, _, config = tool_env
+    fake, _, config = tool_env
     result = await create_order.ainvoke(
         {"items": [{"sku": "RAM-SHIN-1", "quantity": 1}]}, config=config
     )
     assert "delivery address" in result
+    assert "Rs. 1,050" in result, "the customer still hears the total"
+    assert fake.rows("orders") == []
+
+
+async def test_a_town_on_its_own_is_not_an_address(tool_env):
+    """Order #23 went in with "Kadawatha" as its only delivery detail."""
+    fake, _, config = tool_env
+    result = await create_order.ainvoke(
+        {"items": [{"sku": "RAM-SHIN-1", "quantity": 1}], "delivery_note": "Kadawatha"},
+        config=config,
+    )
+    assert "No order was created" in result
+    assert fake.rows("orders") == []
+
+
+async def test_quote_order_applies_the_free_delivery_rule(tool_env):
+    """Two Shin 5 Packs were quoted Rs. 6,500 + Rs. 400 when delivery over
+    Rs. 5,000 is free. The model added it up itself; now the tool does."""
+    fake, ctx, config = tool_env
+
+    over = await quote_order.ainvoke(
+        {"items": [{"sku": "RAM-SHIN-5", "quantity": 2}]}, config=config
+    )
+    under = await quote_order.ainvoke(
+        {"items": [{"sku": "RAM-SHIN-1", "quantity": 1}]}, config=config
+    )
+
+    assert "delivery free" in over and "total Rs. 6,500" in over
+    assert "delivery Rs. 400" in under and "total Rs. 1,050" in under
+    assert fake.rows("orders") == [], "a quote never creates an order"
+    assert ctx.tools_called == ["quote_order", "quote_order"]
 
 
 async def test_escalation_flips_the_takeover_flag(tool_env):
@@ -520,7 +575,7 @@ async def test_create_order_refuses_to_sell_more_than_is_in_stock(tool_env):
     item["stock_quantity"] = 3
 
     result = await create_order.ainvoke(
-        {"items": [{"sku": "RAM-SHIN-1", "quantity": 10}]}, config=config
+        {"items": [{"sku": "RAM-SHIN-1", "quantity": 10}], "delivery_note": ADDRESS}, config=config
     )
 
     assert "Not enough stock" in result
@@ -535,7 +590,7 @@ async def test_create_order_still_sells_what_is_in_stock(tool_env):
     item["stock_quantity"] = 10
 
     result = await create_order.ainvoke(
-        {"items": [{"sku": "RAM-SHIN-1", "quantity": 2}]}, config=config
+        {"items": [{"sku": "RAM-SHIN-1", "quantity": 2}], "delivery_note": ADDRESS}, config=config
     )
 
     assert "created" in result.lower()
@@ -550,7 +605,7 @@ async def test_an_untracked_product_has_no_stock_limit(tool_env):
     item["stock_quantity"] = 0
 
     result = await create_order.ainvoke(
-        {"items": [{"sku": "RAM-SHIN-1", "quantity": 50}]}, config=config
+        {"items": [{"sku": "RAM-SHIN-1", "quantity": 50}], "delivery_note": ADDRESS}, config=config
     )
 
     assert "Not enough stock" not in result
@@ -716,7 +771,7 @@ async def test_payment_details_returns_a_block_the_customer_can_copy(tool_env):
 
 async def test_payment_details_names_the_amount_when_an_order_is_waiting(tool_env):
     _, _, config = tool_env
-    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 2}]}, config=config)
+    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 2}], "delivery_note": ADDRESS}, config=config)
 
     result = await payment_details.ainvoke({}, config=config)
 
@@ -739,7 +794,7 @@ async def test_recording_a_receipt_flags_the_order_without_claiming_payment(tool
     """The agent cannot see the slip. It can take it, write it down and say so
     — what it must never do is tell the customer the money arrived."""
     fake, ctx, config = tool_env
-    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 2}]}, config=config)
+    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 2}], "delivery_note": ADDRESS}, config=config)
 
     result = await record_payment_receipt.ainvoke(
         {"what_they_sent": "bank slip screenshot", "amount": 1700}, config=config
@@ -779,7 +834,7 @@ async def test_a_second_receipt_lands_on_the_same_order(tool_env):
     """A customer often sends the amount in one message and the reference in
     the next. The second must not wipe the first."""
     fake, _, config = tool_env
-    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 1}]}, config=config)
+    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 1}], "delivery_note": ADDRESS}, config=config)
 
     await record_payment_receipt.ainvoke({"what_they_sent": "slip"}, config=config)
     await record_payment_receipt.ainvoke(
@@ -794,7 +849,7 @@ async def test_a_second_receipt_lands_on_the_same_order(tool_env):
 
 async def test_an_order_starts_out_unpaid(tool_env):
     fake, _, config = tool_env
-    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 1}]}, config=config)
+    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 1}], "delivery_note": ADDRESS}, config=config)
 
     assert fake.rows("orders")[0]["payment_status"] == "unpaid"
 
@@ -803,7 +858,7 @@ async def test_a_verified_order_is_not_offered_up_for_the_next_slip(tool_env):
     """Once a human has verified an order, the next slip belongs to whatever
     the customer ordered after it — not to the one already paid for."""
     fake, _, config = tool_env
-    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 1}]}, config=config)
+    await create_order.ainvoke({"items": [{"sku": "RAM-SHIN-1", "quantity": 1}], "delivery_note": ADDRESS}, config=config)
     paid = fake.rows("orders")[0]
     await db.orders.set_payment_status(BUSINESS_ID, paid["id"], "verified")
 
@@ -964,7 +1019,31 @@ def test_the_prompt_tells_the_agent_to_sell_rather_than_list():
 
     assert "A customer who has not named a product is deciding, not searching" in prompt
     assert "suggest_products" in prompt
-    assert "Ask ONE short question about their taste" in prompt
+    assert "ask ONE short question about their taste" in prompt
+
+
+def test_the_first_reply_shows_products_not_just_a_question():
+    """26 of 69 customers on Sept 30 got only "How spicy can you handle?" back
+    and never wrote again: there was nothing in it to look at."""
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "do not answer with only a question either" in prompt
+    assert "In your FIRST reply, call suggest_products" in prompt
+
+
+def test_a_price_question_is_answered_with_prices():
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "A question about price is answered with prices, in that same reply" in prompt
+    assert "never answer any of these with a question back" in prompt
+
+
+def test_the_agent_never_adds_up_a_total_itself():
+    prompt = build_system_prompt(business_name="K FOOD", contact=CONTACT)
+
+    assert "Never add up a total yourself" in prompt
+    assert "call quote_order" in prompt
+    assert "A town on its own" in prompt
 
 
 def test_the_prompt_stops_repeating_after_a_dietary_no_match():

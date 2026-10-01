@@ -150,6 +150,10 @@ class Settings(BaseSettings):
     pos_rate_limit_per_minute: int = 120
     auto_return_minutes: int = 30
     history_turns: int = 10
+    # Customers often type "Hi" and "price?" a second apart. Each message waits
+    # this long for the next one, and only the last of a burst is answered,
+    # with every message in the burst in its history. Zero answers each one.
+    reply_batch_seconds: float = Field(default=2.5, ge=0, le=10)
     notes_limit: int = 5
 
     # -------------------------------------------------------------- validators

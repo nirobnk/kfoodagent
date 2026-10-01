@@ -273,14 +273,17 @@ async def suggest_products(
     "what goes with fire noodles". Also use it to follow up an order with one
     natural suggestion.
 
-    If you do not yet know what they like, ask ONE short question first — how
-    much spice they can take is usually the one that decides everything — then
-    call this with their answer. Never guess a recommendation without calling
-    this: the reasons it returns are what make the suggestion worth reading.
+    If you do not yet know what they like, call this with taste "popular picks
+    across the heat range", give them two or three with prices, and ask ONE
+    short question — how much spice they can take is usually the one that
+    decides everything. Then call it again with their answer. Never guess a
+    recommendation without calling this: the reasons it returns are what make
+    the suggestion worth reading.
 
     Args:
         taste: What the customer said they want, in their own words — "soupy
-            and not too hot", "spicy stir fry", "sweet drink for a kid".
+            and not too hot", "spicy stir fry", "sweet drink for a kid" — or
+            "popular picks across the heat range" when they have not said.
         spice: How much heat they want, if you know: "none", "mild", "medium",
             "hot" or "extreme". Leave empty to read it out of `taste`.
         max_price: The most they want to spend on one pack, in rupees.
