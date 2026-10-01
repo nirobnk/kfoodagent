@@ -350,6 +350,15 @@ async def _respond(batch: list[Prepared], business_id: str) -> None:
                 extra={"contact_id": contact_id, "message_id": slip.saved.get("id")},
             )
 
+    if await _repeats_last_reply(contact_id, reply.text):
+        # Two messages a few seconds apart, the second arriving while the
+        # first was being answered: the second run read a chat that had
+        # already been answered and wrote the same reply again, word for
+        # word. Nethu Adikari got it twice on Oct 1. Nothing new to say.
+        log.info("reply repeats the last one, not sent", extra={"contact_id": contact_id})
+        await _record_usage(reply, business_id, contact_id, None)
+        return
+
     result = await outbound.send_text(
         business_id=business_id, contact=contact, body=reply.text, sender="agent"
     )
@@ -359,6 +368,20 @@ async def _respond(batch: list[Prepared], business_id: str) -> None:
             extra={"contact_id": contact_id, "reason": result.reason},
         )
     await _record_usage(reply, business_id, contact_id, result.wa_message_id)
+
+
+async def _repeats_last_reply(contact_id: str, text: str) -> bool:
+    """Whether the last thing sent to this customer was this exact text."""
+    try:
+        recent = await db.messages.history(contact_id, limit=6)
+    except Exception:
+        return False
+    last = next(
+        (m for m in reversed(recent)
+         if m.get("direction") == "out" and m.get("message_type") == "text"),
+        None,
+    )
+    return bool(last) and (last.get("body") or "").strip() == (text or "").strip()
 
 
 async def _record_usage(

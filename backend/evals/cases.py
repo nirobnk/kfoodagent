@@ -192,7 +192,9 @@ CASES: list[dict] = [
         "id": "what-are-the-stocks-then-other-foods",
         "turns": [
             {"say": [OPENER]},
-            {"say": ["What are the stocks"], "expect": {"has_price": True}},
+            # They have just been sent the priced list, so "all of those are in
+            # stock" is a good answer; repeating every price is not needed.
+            {"say": ["What are the stocks"], "expect": {"no_tools": ["create_order"], "max_chars": 700}},
             {"say": ["Any other foods"], "expect": {"contains_any": ["Binggrae", "OKF", "Bacchus", "Banana"]}},
         ],
     },
@@ -233,6 +235,24 @@ CASES: list[dict] = [
         "turns": [
             {"say": [OPENER]},
             {"say": ["Mata pahadili na"], "expect": {"answered_by": "model", "no_tools": ["create_order"]}},
+        ],
+    },
+    {
+        "id": "singlish-short-answers-no-5-pack",
+        "source": "Oct 1: 5 Pack prices nobody asked for, descriptions repeated, Sinhala "
+                  "script to a customer writing Singlish",
+        "turns": [
+            {"say": ["Monada oyala laga thiyana ramen"]},
+            {"say": ["2 spice vage"], "expect": {
+                "has_price": True, "not_contains": ["5 Pack", "5-pack", "3,750", "4,475"],
+                "script": "latin",
+            }},
+            {"say": ["Meva 2 spice da"], "expect": {
+                "not_contains": ["5 Pack", "3,750", "4,475"], "script": "latin", "max_chars": 260,
+            }},
+            {"say": ["Shin black eka kiyada"], "expect": {
+                "contains": ["895"], "not_contains": ["5 Pack", "4,475"], "script": "latin",
+            }},
         ],
     },
     # --- photos and voice ---------------------------------------------------------
