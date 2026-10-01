@@ -33,8 +33,9 @@ log = logging.getLogger(__name__)
 
 # A stop on runaway replies, not a length target. 900 cut the full price list
 # mid-line ("Hot Dak Stir-Fry Ramen…") and the customer never saw the rest;
-# twenty products with prices run to about 1,100. WhatsApp allows 4,096.
-MAX_REPLY_CHARS = 2000
+# the full grouped price list (30 products, with emojis) runs to about 2,000.
+# WhatsApp allows 4,096.
+MAX_REPLY_CHARS = 3500
 
 # An attachment the model cannot open. A caption is readable text, so the
 # message reaches the agent — but unlabelled it looks like an ordinary message,
