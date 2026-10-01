@@ -425,6 +425,33 @@ def test_analytics_reports_revenue_the_mix_and_the_month(client, wired):
     assert "outbound" in body["messages"]
 
 
+def test_analytics_credits_orders_to_the_ad_that_started_the_chat(client, wired):
+    fake = wired
+    fake.seed(
+        "ad_referrals",
+        [
+            {
+                "id": "ref-1",
+                "business_id": BUSINESS_ID,
+                "contact_id": CONTACT_ID,
+                "source_type": "ad",
+                "source_id": "120210000000001",
+                "headline": "Korean ramen delivered",
+                "created_at": (datetime.now(timezone.utc) - timedelta(days=10)).isoformat(),
+            }
+        ],
+    )
+
+    body = client.get("/crm/analytics", params={"days": 30}).json()
+
+    [ad] = body["ads"]
+    assert ad["ad_id"] == "120210000000001"
+    assert ad["headline"] == "Korean ramen delivered"
+    assert ad["chats"] == 1
+    assert ad["orders"] == 2, "both of Nimal's orders came after the tap"
+    assert ad["revenue"] == 3600
+
+
 def test_analytics_refuses_a_window_it_cannot_serve(client, wired):
     assert client.get("/crm/analytics", params={"days": 5000}).status_code == 422
 
@@ -514,3 +541,68 @@ def test_a_pos_device_cannot_read_the_customer_book(client, wired, monkeypatch):
     assert client.post(
         "/crm/tasks", headers=headers, json={"title": "anything"}
     ).status_code == 401
+
+
+# --- ad attribution --------------------------------------------------------
+
+NOW = datetime(2026, 10, 1, 12, tzinfo=timezone.utc)
+
+
+def tap(contact: str, ad: str, days_ago: float) -> dict:
+    return {"contact_id": contact, "source_id": ad, "headline": f"Ad {ad}",
+            "created_at": (NOW - timedelta(days=days_ago)).isoformat()}
+
+
+def placed(contact: str, days_ago: float, total: float, **extra) -> dict:
+    return {"contact_id": contact, "total": total, "status": "new", "source": "agent",
+            "created_at": (NOW - timedelta(days=days_ago)).isoformat(), **extra}
+
+
+def test_an_order_belongs_to_the_latest_ad_tapped_before_it():
+    ads = crm.ad_performance(
+        [tap("c1", "A", 10), tap("c1", "B", 5)],
+        [placed("c1", 3, 1000)],
+        days=30, now=NOW,
+    )
+
+    by_id = {ad["ad_id"]: ad for ad in ads}
+    assert by_id["B"]["orders"] == 1 and by_id["B"]["revenue"] == 1000
+    assert by_id["A"]["orders"] == 0
+    assert by_id["A"]["chats"] == 1, "the earlier tap still brought a chat"
+
+
+def test_an_order_long_after_the_tap_is_not_the_ads():
+    ads = crm.ad_performance(
+        [tap("c1", "A", 50)],
+        [placed("c1", 50 - crm.AD_ATTRIBUTION_DAYS - 1, 1000)],
+        days=30, now=NOW,
+    )
+
+    assert ads == [], "no chat in the window and no credited order"
+
+
+def test_counter_sales_cancellations_and_payments_are_kept_apart():
+    ads = crm.ad_performance(
+        [tap("c1", "A", 6)],
+        [
+            placed("c1", 5, 1000, payment_status="verified"),
+            placed("c1", 4, 2000),
+            placed("c1", 3, 500, status="cancelled"),
+            placed("c1", 2, 900, source="pos"),
+        ],
+        days=30, now=NOW,
+    )
+
+    [ad] = ads
+    assert ad["orders"] == 2
+    assert ad["paid_orders"] == 1
+    assert ad["revenue"] == 3000
+
+
+def test_an_order_before_any_tap_is_not_credited():
+    ads = crm.ad_performance(
+        [tap("c1", "A", 2)], [placed("c1", 5, 1000)], days=30, now=NOW
+    )
+
+    [ad] = ads
+    assert ad["orders"] == 0 and ad["chats"] == 1

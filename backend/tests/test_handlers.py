@@ -526,3 +526,50 @@ async def test_a_slip_followed_by_paid_keeps_the_slip(wired, monkeypatch):
     assert receipts[0]["message_id"] == slip_row["id"]
     assert receipts[0]["reported_detail"] == "paid"
     assert len(wa.texts) == 1
+
+
+# --- which ad started the chat -------------------------------------------------
+
+AD = {
+    "source_type": "ad",
+    "source_id": "120210000000001",
+    "source_url": "https://fb.me/abc",
+    "headline": "Korean ramen delivered",
+    "body": None,
+    "media_type": "image",
+    "media_url": None,
+    "ctwa_clid": "ARAkLkA",
+    "raw": {"source_id": "120210000000001"},
+}
+
+
+async def test_a_chat_from_an_ad_records_the_ad(wired):
+    fake, wa, calls = wired
+    message = inbound("Hi! I want to order Korean ramen 🍜", "wamid.AD")
+    message.referral = AD
+
+    await handlers.process_inbound(message, BUSINESS_ID)
+
+    [row] = fake.rows("ad_referrals")
+    assert row["source_id"] == "120210000000001"
+    assert row["headline"] == "Korean ramen delivered"
+    assert row["ctwa_clid"] == "ARAkLkA"
+    assert row["contact_id"] == fake.rows("contacts")[0]["id"]
+    saved = next(m for m in fake.rows("messages") if m["direction"] == "in")
+    assert row["message_id"] == saved["id"]
+    assert len(wa.texts) == 1
+
+
+async def test_a_failed_ad_record_still_answers_the_customer(wired, monkeypatch):
+    fake, wa, calls = wired
+
+    async def broken(**_):
+        raise RuntimeError("table missing")
+
+    monkeypatch.setattr(handlers.db.ad_referrals, "record", broken)
+    message = inbound("Hi!", "wamid.AD2")
+    message.referral = AD
+
+    await handlers.process_inbound(message, BUSINESS_ID)
+
+    assert len(wa.texts) == 1

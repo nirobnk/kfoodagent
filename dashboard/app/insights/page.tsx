@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/Bits';
 import { LIFECYCLE, LIFECYCLE_ORDER, SOURCES, change } from '@/lib/crm';
 import { formatMoney } from '@/lib/format';
-import type { Analytics } from '@/lib/types';
+import type { AdPerformance, Analytics } from '@/lib/types';
 
 /**
  * Where the money comes from.
@@ -224,6 +224,18 @@ export default function InsightsPage() {
             </section>
           </div>
 
+          {/* --- which ads sell ------------------------------------------ */}
+          <section className="card mt-4 p-5">
+            <h2 className="font-display text-lg font-extrabold tracking-tightest">
+              Ads that bring chats
+            </h2>
+            <p className="mb-4 text-sm text-soy">
+              Customers who tapped a Facebook or Instagram ad to message us. An order counts for
+              the last ad they tapped, if they tapped it in the 28 days before ordering.
+            </p>
+            <AdTable ads={data.ads ?? []} />
+          </section>
+
           {/* --- the book ------------------------------------------------- */}
           <section className="card mt-4 p-5">
             <h2 className="mb-4 font-display text-lg font-extrabold tracking-tightest">
@@ -289,5 +301,52 @@ function Mix({
         </li>
       ))}
     </ul>
+  );
+}
+
+function AdTable({ ads }: { ads: AdPerformance[] }) {
+  if (ads.length === 0) {
+    return (
+      <Empty title="No ad chats in this window">
+        Chats started from a click-to-WhatsApp ad show up here, with the orders they led to.
+      </Empty>
+    );
+  }
+
+  return (
+    <ul className="divide-y divide-line">
+      {ads.map((ad) => {
+        const rate = ad.chats > 0 ? Math.round((ad.orders / ad.chats) * 100) : null;
+        return (
+          <li
+            key={ad.ad_id ?? ad.headline ?? 'unknown'}
+            className="grid grid-cols-2 gap-x-4 gap-y-1 py-3 sm:grid-cols-[minmax(0,1fr)_repeat(4,6rem)] sm:items-baseline"
+          >
+            <div className="col-span-2 min-w-0 sm:col-span-1">
+              <p className="truncate text-sm font-medium">{ad.headline || 'Untitled ad'}</p>
+              <p className="truncate font-mono text-2xs text-soy">
+                {ad.source_type === 'post' ? 'Post' : 'Ad'} {ad.ad_id ?? '—'}
+              </p>
+            </div>
+            <AdFigure label="Chats" value={String(ad.chats)} />
+            <AdFigure
+              label="Orders"
+              value={rate === null ? String(ad.orders) : `${ad.orders} · ${rate}%`}
+            />
+            <AdFigure label="Paid" value={String(ad.paid_orders)} />
+            <AdFigure label="Revenue" value={formatMoney(ad.revenue)} />
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function AdFigure({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="sm:text-right">
+      <p className="eyebrow">{label}</p>
+      <p className="whitespace-nowrap font-mono text-sm tnum">{value}</p>
+    </div>
   );
 }

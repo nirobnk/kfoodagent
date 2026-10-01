@@ -1,4 +1,5 @@
 from . import (
+    ad_referrals,
     business,
     contacts,
     crm,
@@ -16,6 +17,7 @@ from . import (
 from .client import close_db, get_db, ping
 
 __all__ = [
+    "ad_referrals",
     "business",
     "contacts",
     "crm",

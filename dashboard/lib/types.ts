@@ -326,7 +326,21 @@ export interface Analytics {
     returning_revenue: number;
   };
   segments: Partial<Record<Lifecycle, number>>;
+  ads: AdPerformance[];
   messages: { month_start: string; outbound: number; inbound: number };
+}
+
+/** One click-to-WhatsApp ad: the chats it started and the orders that followed. */
+export interface AdPerformance {
+  ad_id: string | null;
+  headline: string | null;
+  source_type: string | null;
+  source_url: string | null;
+  chats: number;
+  orders: number;
+  paid_orders: number;
+  revenue: number;
+  last_tap: string | null;
 }
 
 export interface AnalyticsPeriod {

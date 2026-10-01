@@ -448,6 +448,7 @@ class AnalyticsResponse(BaseModel):
     source_mix: list[dict[str, Any]] = Field(default_factory=list)
     acquisition: dict[str, Any] = Field(default_factory=dict)
     segments: dict[str, int] = Field(default_factory=dict)
+    ads: list[dict[str, Any]] = Field(default_factory=list)
     messages: dict[str, Any] = Field(default_factory=dict)
 
 

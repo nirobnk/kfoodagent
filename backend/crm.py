@@ -428,3 +428,95 @@ def totals(
             previous_rows.append(order)
 
     return {"days": days, "current": measure(current_rows), "previous": measure(previous_rows)}
+
+
+# How long after tapping an ad an order still counts as that ad's. Meta's own
+# default click window is seven days; a customer who asks the price on Monday
+# and pays after payday counts too, so this is longer.
+AD_ATTRIBUTION_DAYS = 28
+
+
+def ad_performance(
+    referrals: Iterable[dict[str, Any]],
+    orders: Iterable[dict[str, Any]],
+    *,
+    days: int = 30,
+    now: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Chats, orders and money per ad, best earner first.
+
+    An order belongs to the customer's most recent ad tap before it, if that
+    tap was within AD_ATTRIBUTION_DAYS. Shop-counter orders are left out: the
+    till does not know who saw what. `referrals` must reach back far enough to
+    cover the attribution window before `days`.
+    """
+    now = _now(now)
+    window_start = now - timedelta(days=days)
+
+    taps_by_contact: dict[str, list[tuple[datetime, dict[str, Any]]]] = {}
+    ads: dict[str, dict[str, Any]] = {}
+    chats: dict[str, set[str]] = {}
+
+    def ad_key(referral: dict[str, Any]) -> str:
+        return str(referral.get("source_id") or referral.get("headline") or "unknown")
+
+    for referral in referrals:
+        tapped = _parsed(referral.get("created_at"))
+        contact_id = str(referral.get("contact_id") or "")
+        if not tapped or not contact_id:
+            continue
+        key = ad_key(referral)
+        taps_by_contact.setdefault(contact_id, []).append((tapped, referral))
+        ad = ads.setdefault(
+            key,
+            {
+                "ad_id": referral.get("source_id"),
+                "headline": referral.get("headline"),
+                "source_type": referral.get("source_type"),
+                "source_url": referral.get("source_url"),
+                "chats": 0,
+                "orders": 0,
+                "paid_orders": 0,
+                "revenue": 0.0,
+                "last_tap": None,
+            },
+        )
+        # The newest headline wins: an ad renamed in Ads Manager keeps its id.
+        ad["headline"] = referral.get("headline") or ad["headline"]
+        if tapped >= window_start:
+            chats.setdefault(key, set()).add(contact_id)
+            ad["last_tap"] = tapped.isoformat()
+
+    for taps in taps_by_contact.values():
+        taps.sort(key=lambda tap: tap[0])
+
+    for order in orders:
+        placed = _parsed(order.get("created_at"))
+        if not placed or placed < window_start or order.get("source") == "pos":
+            continue
+        if order.get("status") == CANCELLED:
+            continue
+        taps = taps_by_contact.get(str(order.get("contact_id") or ""))
+        if not taps:
+            continue
+        before = [tap for tap in taps if tap[0] <= placed]
+        if not before:
+            continue
+        tapped, referral = before[-1]
+        if placed - tapped > timedelta(days=AD_ATTRIBUTION_DAYS):
+            continue
+        ad = ads[ad_key(referral)]
+        ad["orders"] += 1
+        ad["revenue"] += _money(order.get("total"))
+        if order.get("payment_status") == "verified":
+            ad["paid_orders"] += 1
+
+    result = []
+    for key, ad in ads.items():
+        ad["chats"] = len(chats.get(key, ()))
+        if not ad["chats"] and not ad["orders"]:
+            continue
+        ad["revenue"] = round(ad["revenue"], 2)
+        result.append(ad)
+    result.sort(key=lambda ad: (ad["revenue"], ad["orders"], ad["chats"]), reverse=True)
+    return result
