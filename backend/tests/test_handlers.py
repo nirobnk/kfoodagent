@@ -607,3 +607,28 @@ async def test_a_reply_with_no_model_calls_records_nothing(wired):
     await handlers.process_inbound(inbound("hi", "wamid.FREE"), BUSINESS_ID)
 
     assert fake.rows("llm_usage") == []
+
+
+async def test_a_reply_identical_to_the_last_one_is_not_sent_again(wired, monkeypatch):
+    """Two messages 6s apart: the second run wrote the first reply again,
+    word for word, and the customer got it twice."""
+    fake, wa, _ = wired
+
+    async def same_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
+        return AgentReply(text="Menna Shin Ramyun Black 😊 Rs. 895")
+
+    monkeypatch.setattr(handlers, "run_agent", same_agent)
+
+    await handlers.process_inbound(inbound("Mehema kiyuvata mama dekala ne ne", "wamid.1"), BUSINESS_ID)
+    await handlers.process_inbound(inbound("Balanna puluvanda", "wamid.2"), BUSINESS_ID)
+
+    assert len(wa.texts) == 1, "the repeat was not sent"
+
+
+async def test_a_different_reply_is_still_sent(wired):
+    fake, wa, _ = wired
+
+    await handlers.process_inbound(inbound("first", "wamid.1"), BUSINESS_ID)
+    await handlers.process_inbound(inbound("second", "wamid.2"), BUSINESS_ID)
+
+    assert len(wa.texts) == 2
