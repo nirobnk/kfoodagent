@@ -28,7 +28,7 @@ is what that gap actually needed.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -314,6 +314,16 @@ async def analytics(
         stage = str(contact.get("lifecycle") or "lead")
         segments[stage] = segments.get(stage, 0) + 1
 
+    # Reaches back past the window, so an order early in it can still be
+    # matched to the ad tapped a few weeks before.
+    try:
+        referrals = await db.ad_referrals.since(
+            BUSINESS_ID, now - timedelta(days=days + crm.AD_ATTRIBUTION_DAYS)
+        )
+    except Exception:
+        log.warning("could not read ad referrals", exc_info=True)
+        referrals = []
+
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     return schemas.AnalyticsResponse(
         days=days,
@@ -324,6 +334,7 @@ async def analytics(
         source_mix=crm.mix(in_window, "source"),
         acquisition=crm.new_versus_returning(orders, days=days, now=now),
         segments=segments,
+        ads=crm.ad_performance(referrals, orders, days=days, now=now),
         messages={
             "month_start": month_start.date().isoformat(),
             "outbound": await db.messages.count_since(BUSINESS_ID, month_start, direction="out"),

@@ -202,3 +202,54 @@ def test_multiple_messages_in_one_delivery():
     parsed = parse_webhook(payload)
 
     assert [m.text for m in parsed.messages] == ["one", "two"]
+
+
+def test_a_chat_started_from_an_ad_carries_the_ad():
+    payload = envelope(
+        {
+            "metadata": {"phone_number_id": "PNID"},
+            "messages": [
+                {
+                    "from": "94771234567",
+                    "id": "wamid.AD",
+                    "timestamp": "1700000000",
+                    "type": "text",
+                    "text": {"body": "Hi! I want to order Korean ramen 🍜"},
+                    "referral": {
+                        "source_url": "https://fb.me/abc",
+                        "source_id": "120210000000001",
+                        "source_type": "ad",
+                        "headline": "Korean ramen delivered",
+                        "body": "Shin, Hot Dak and more",
+                        "media_type": "image",
+                        "image_url": "https://scontent.example/ad.jpg",
+                        "ctwa_clid": "ARAkLkA",
+                    },
+                }
+            ],
+        }
+    )
+
+    referral = parse_webhook(payload).messages[0].referral
+
+    assert referral is not None
+    assert referral["source_id"] == "120210000000001"
+    assert referral["source_type"] == "ad"
+    assert referral["headline"] == "Korean ramen delivered"
+    assert referral["media_url"] == "https://scontent.example/ad.jpg"
+    assert referral["ctwa_clid"] == "ARAkLkA"
+    assert referral["raw"]["source_url"] == "https://fb.me/abc"
+
+
+def test_an_ordinary_message_has_no_referral():
+    payload = envelope(
+        {
+            "metadata": {"phone_number_id": "PNID"},
+            "messages": [
+                {"from": "9477", "id": "wamid.X", "timestamp": "1700000000",
+                 "type": "text", "text": {"body": "hi"}}
+            ],
+        }
+    )
+
+    assert parse_webhook(payload).messages[0].referral is None

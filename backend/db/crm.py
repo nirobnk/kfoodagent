@@ -97,7 +97,7 @@ async def all_orders(business_id: str, *, limit: int = 4000) -> list[dict[str, A
     db = await get_db()
     res = (
         await db.table("orders")
-        .select("id,contact_id,status,total,subtotal,items,source,created_at")
+        .select("id,contact_id,status,payment_status,total,subtotal,items,source,created_at")
         .eq("business_id", business_id)
         .order("created_at", desc=True)
         .limit(limit)

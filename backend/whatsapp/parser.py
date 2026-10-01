@@ -34,6 +34,8 @@ class InboundMessage:
     media_id: str | None = None
     media_mime: str | None = None
     caption: str | None = None
+    # Set when the customer arrived by tapping a click-to-WhatsApp ad.
+    referral: dict[str, Any] | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -101,6 +103,32 @@ def _extract_text(message: dict[str, Any]) -> str | None:
     return None
 
 
+def _referral(message: dict[str, Any]) -> dict[str, Any] | None:
+    """The ad a customer tapped to start this chat, if they came from one.
+
+    Meta sends it on the first message after the tap, under `referral`.
+    """
+    referral = message.get("referral")
+    if not isinstance(referral, dict) or not referral:
+        return None
+
+    def text(key: str) -> str | None:
+        value = referral.get(key)
+        return str(value).strip() or None if value is not None else None
+
+    return {
+        "source_type": text("source_type"),
+        "source_id": text("source_id"),
+        "source_url": text("source_url"),
+        "headline": text("headline"),
+        "body": text("body"),
+        "media_type": text("media_type"),
+        "media_url": text("image_url") or text("video_url"),
+        "ctwa_clid": text("ctwa_clid"),
+        "raw": referral,
+    }
+
+
 def parse_webhook(payload: dict[str, Any]) -> ParsedWebhook:
     """Parse a full webhook body. Never raises."""
     result = ParsedWebhook()
@@ -156,6 +184,7 @@ def parse_webhook(payload: dict[str, Any]) -> ParsedWebhook:
                         media_id=media.get("id"),
                         media_mime=media.get("mime_type"),
                         caption=media.get("caption"),
+                        referral=_referral(message),
                         raw=message,
                     )
                 )

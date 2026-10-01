@@ -189,6 +189,9 @@ async def _prepare(message: InboundMessage, business_id: str) -> Prepared | None
     )
     await db.contacts.bump_unread(business_id, contact_id)
 
+    if message.referral:
+        await _record_referral(message, business_id, contact_id, str(saved["id"]))
+
     client = get_client()
     await client.mark_read(message.wa_message_id)
 
@@ -209,6 +212,27 @@ async def _prepare(message: InboundMessage, business_id: str) -> Prepared | None
         incoming_text=incoming_text,
         client=client,
     )
+
+
+async def _record_referral(
+    message: InboundMessage, business_id: str, contact_id: str, message_id: str
+) -> None:
+    """Note which ad started this chat. Never fatal: the customer comes first."""
+    referral = message.referral or {}
+    try:
+        await db.ad_referrals.record(
+            business_id=business_id,
+            contact_id=contact_id,
+            message_id=message_id,
+            referral=referral,
+        )
+        log.info(
+            "chat started from an ad",
+            extra={"contact_id": contact_id, "ad_id": referral.get("source_id"),
+                   "headline": referral.get("headline")},
+        )
+    except Exception:
+        log.exception("could not record ad referral", extra={"contact_id": contact_id})
 
 
 async def _respond(batch: list[Prepared], business_id: str) -> None:
