@@ -141,20 +141,33 @@ async def search(business_id: str, query: str, limit: int = 60) -> list[dict[str
 
     db = await get_db()
     columns = ("product_name", "name", "brand", "category", "korean_name", "short_description")
-    clause = ",".join(
-        f"{column}.ilike.%{candidate}%" for candidate in expand(term) for column in columns
-    )
-    res = (
-        await db.table(TABLE)
-        .select(FIELDS)
-        .eq("business_id", business_id)
-        .eq("available", True)
-        .or_(clause)
-        .order("sort_order")
-        .limit(limit)
-        .execute()
-    )
-    found = rows(res)
+
+    async def matching(candidates: list[str]) -> list[dict[str, Any]]:
+        clause = ",".join(
+            f"{column}.ilike.%{candidate}%" for candidate in candidates for column in columns
+        )
+        res = (
+            await db.table(TABLE)
+            .select(FIELDS)
+            .eq("business_id", business_id)
+            .eq("available", True)
+            .or_(clause)
+            .order("sort_order")
+            .limit(limit)
+            .execute()
+        )
+        return rows(res)
+
+    # A name of two words or more is looked up as written first. Expanded,
+    # "shin ramyun" also meant "noodle" and returned every noodle on the shelf
+    # — 1,700 tokens of search result for a question about one product.
+    # "ramen" on its own still expands: it is the word for the whole range.
+    if len(term.split()) > 1:
+        found = await matching([term])
+        if found:
+            return found
+
+    found = await matching(expand(term))
     if found:
         return found
 

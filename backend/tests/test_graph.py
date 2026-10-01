@@ -279,3 +279,38 @@ async def test_an_order_created_during_the_run_is_returned(env, monkeypatch):
     assert reply.created_order["delivery_fee"] == 400   # 3,250 is under the free threshold
     assert reply.created_order["total"] == 3650
     assert env.rows("orders")[0]["status"] == "new"
+
+
+async def test_a_turn_reports_what_its_model_calls_cost(env, monkeypatch):
+    def billed(message: AIMessage, prompt: int, cached: int, written: int) -> AIMessage:
+        message.response_metadata = {
+            "model_name": "gpt-5.6-terra",
+            "token_usage": {
+                "prompt_tokens": prompt,
+                "completion_tokens": 30,
+                "prompt_tokens_details": {"cached_tokens": cached, "cache_write_tokens": written},
+            },
+        }
+        return message
+
+    install_llm(
+        monkeypatch,
+        [
+            billed(
+                AIMessage(
+                    content="",
+                    tool_calls=[{"name": "search_menu", "args": {"query": "ramen"}, "id": "c1"}],
+                ),
+                prompt=7000, cached=6000, written=1000,
+            ),
+            billed(AIMessage(content="Shin Ramyun is Rs. 650"), prompt=7600, cached=7000, written=600),
+        ],
+    )
+
+    reply = await run_agent(business_id=BUSINESS_ID, contact=CONTACT, incoming_text="ramen?")
+
+    assert reply.usage is not None
+    assert reply.usage.calls == 2
+    assert reply.usage.input_tokens == 14600
+    assert reply.usage.cache_write_tokens == 1600
+    assert reply.usage.cost_usd() > 0

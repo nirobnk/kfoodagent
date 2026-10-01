@@ -342,6 +342,25 @@ async def _respond(batch: list[Prepared], business_id: str) -> None:
             "agent reply not delivered",
             extra={"contact_id": contact_id, "reason": result.reason},
         )
+    await _record_usage(reply, business_id, contact_id, result.wa_message_id)
+
+
+async def _record_usage(
+    reply: Any, business_id: str, contact_id: str, wa_message_id: str | None
+) -> None:
+    """Keep what the reply cost. Never fatal: it is bookkeeping."""
+    usage = getattr(reply, "usage", None)
+    if usage is None or not usage.calls:
+        return
+    try:
+        await db.llm_usage.record(
+            business_id=business_id,
+            contact_id=contact_id,
+            usage=usage.as_dict(),
+            reply_wa_message_id=wa_message_id,
+        )
+    except Exception:
+        log.warning("could not record token usage", exc_info=True)
 
 
 async def _store_receipt_media(

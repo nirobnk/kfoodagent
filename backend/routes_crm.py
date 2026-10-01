@@ -323,6 +323,11 @@ async def analytics(
     except Exception:
         log.warning("could not read ad referrals", exc_info=True)
         referrals = []
+    try:
+        usage = await db.llm_usage.since(BUSINESS_ID, now - timedelta(days=days))
+    except Exception:
+        log.warning("could not read token usage", exc_info=True)
+        usage = []
 
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     return schemas.AnalyticsResponse(
@@ -334,7 +339,8 @@ async def analytics(
         source_mix=crm.mix(in_window, "source"),
         acquisition=crm.new_versus_returning(orders, days=days, now=now),
         segments=segments,
-        ads=crm.ad_performance(referrals, orders, days=days, now=now),
+        ads=crm.ad_performance(referrals, orders, usage=usage, days=days, now=now),
+        agent_cost=crm.agent_costs(usage, orders, days=days, now=now),
         messages={
             "month_start": month_start.date().isoformat(),
             "outbound": await db.messages.count_since(BUSINESS_ID, month_start, direction="out"),

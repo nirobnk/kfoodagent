@@ -116,3 +116,10 @@ export function heatLabel(level: number | null): string {
   if (level === null || level === undefined) return '';
   return '🌶️'.repeat(Math.max(0, Math.min(5, level))) || 'mild';
 }
+
+/** OpenAI bills in dollars, and a single reply costs fractions of a cent. */
+export function formatUsd(value: number): string {
+  if (value === 0) return '$0';
+  if (Math.abs(value) < 0.1) return `$${value.toFixed(3)}`;
+  return `$${value.toFixed(2)}`;
+}

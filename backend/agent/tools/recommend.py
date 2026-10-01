@@ -251,7 +251,7 @@ def format_suggestion(product: dict[str, Any], reasons: list[str]) -> str:
         lines.append(f"  why: {'; '.join(reasons[:3])}")
     if product.get("description"):
         lines.append(f"  {product['description']}")
-    stock = stock_line(product)
+    stock = stock_line(product, quiet=True)
     if stock:
         lines.append(stock)
     return "\n".join(lines)

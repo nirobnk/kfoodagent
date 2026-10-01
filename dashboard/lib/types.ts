@@ -327,6 +327,7 @@ export interface Analytics {
   };
   segments: Partial<Record<Lifecycle, number>>;
   ads: AdPerformance[];
+  agent_cost: AgentCost;
   messages: { month_start: string; outbound: number; inbound: number };
 }
 
@@ -340,7 +341,22 @@ export interface AdPerformance {
   orders: number;
   paid_orders: number;
   revenue: number;
+  agent_cost_usd: number;
   last_tap: string | null;
+}
+
+/** What the WhatsApp agent's OpenAI calls cost, in US dollars as OpenAI bills them. */
+export interface AgentCost {
+  days: number;
+  cost_usd: number;
+  replies: number;
+  model_calls: number;
+  chats: number;
+  orders: number;
+  per_reply_usd: number;
+  per_chat_usd: number;
+  per_order_usd: number | null;
+  tokens: { input: number; cached: number; cache_write: number; output: number };
 }
 
 export interface AnalyticsPeriod {

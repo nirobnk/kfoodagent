@@ -573,3 +573,37 @@ async def test_a_failed_ad_record_still_answers_the_customer(wired, monkeypatch)
     await handlers.process_inbound(message, BUSINESS_ID)
 
     assert len(wa.texts) == 1
+
+
+# --- what a reply cost ----------------------------------------------------------
+
+async def test_a_reply_records_what_it_cost(wired, monkeypatch):
+    from agent.usage import TokenUsage
+
+    fake, wa, _ = wired
+
+    async def costed_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
+        return AgentReply(
+            text="Shin is Rs. 650",
+            usage=TokenUsage(model="gpt-5.6-terra", calls=2, input_tokens=14000,
+                             cached_tokens=12000, cache_write_tokens=2000, output_tokens=50),
+        )
+
+    monkeypatch.setattr(handlers, "run_agent", costed_agent)
+
+    await handlers.process_inbound(inbound("shin price?", "wamid.COST"), BUSINESS_ID)
+
+    [row] = fake.rows("llm_usage")
+    assert row["calls"] == 2
+    assert row["cache_write_tokens"] == 2000
+    assert row["cost_usd"] > 0
+    assert row["contact_id"] == fake.rows("contacts")[0]["id"]
+    assert row["reply_wa_message_id"] == "wamid.OUT1"
+
+
+async def test_a_reply_with_no_model_calls_records_nothing(wired):
+    fake, _, _ = wired
+
+    await handlers.process_inbound(inbound("hi", "wamid.FREE"), BUSINESS_ID)
+
+    assert fake.rows("llm_usage") == []
