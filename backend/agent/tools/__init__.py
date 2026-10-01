@@ -5,11 +5,13 @@ from .notes import save_note
 from .orders import check_order_status, create_order, quote_order
 from .payments import payment_details, record_payment_receipt
 from .photos import send_product_photo
+from .pricelist import price_list
 from .recommend import suggest_products
 from .store import store_info
 
 TOOLS = [
     search_menu,
+    price_list,
     find_dietary_options,
     suggest_products,
     product_details,
@@ -28,6 +30,7 @@ TOOLS = [
 __all__ = [
     "TOOLS",
     "search_menu",
+    "price_list",
     "find_dietary_options",
     "suggest_products",
     "product_details",
