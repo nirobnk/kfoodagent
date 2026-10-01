@@ -22,7 +22,10 @@ from typing import Any
 import db
 import outbound
 from agent import run_agent
+from agent.graph import AgentReply
+from agent.usage import TokenUsage
 from config import settings
+from fastpath import fast_reply
 from transcription import transcribe_audio
 from vision import describe_image
 from whatsapp import InboundMessage, StatusUpdate, get_client
@@ -260,6 +263,19 @@ async def _respond(batch: list[Prepared], business_id: str) -> None:
         log.info("ignoring unsupported message type", extra={"type": message.type})
         return
 
+    if all(p.message.type == "text" for p in batch):
+        quick = await fast_reply(business_id, [p.message.text or "" for p in batch])
+        if quick is not None:
+            result = await outbound.send_text(
+                business_id=business_id, contact=contact, body=quick.text, sender="agent"
+            )
+            log.info("answered by code", extra={"contact_id": contact_id, "reason": quick.reason})
+            await _record_usage(
+                AgentReply(text=quick.text, usage=TokenUsage(model="code")),
+                business_id, contact_id, result.wa_message_id, answered_by_code=True,
+            )
+            return
+
     reply = await run_agent(
         business_id=business_id,
         contact=contact,
@@ -346,11 +362,20 @@ async def _respond(batch: list[Prepared], business_id: str) -> None:
 
 
 async def _record_usage(
-    reply: Any, business_id: str, contact_id: str, wa_message_id: str | None
+    reply: Any,
+    business_id: str,
+    contact_id: str,
+    wa_message_id: str | None,
+    *,
+    answered_by_code: bool = False,
 ) -> None:
-    """Keep what the reply cost. Never fatal: it is bookkeeping."""
+    """Keep what the reply cost. Never fatal: it is bookkeeping.
+
+    A reply written by code is kept too, at zero, so the dashboard's cost per
+    reply counts every reply the customer got, not only the model's.
+    """
     usage = getattr(reply, "usage", None)
-    if usage is None or not usage.calls:
+    if usage is None or (not usage.calls and not answered_by_code):
         return
     try:
         await db.llm_usage.record(
