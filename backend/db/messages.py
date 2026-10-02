@@ -60,6 +60,12 @@ async def save(
     transcription_error: str | None = None,
     image_analysis_status: str | None = None,
     created_at: datetime | None = None,
+    media_mime: str | None = None,
+    media_filename: str | None = None,
+    reply_to_wa_message_id: str | None = None,
+    reply_to_text: str | None = None,
+    reacted_to_wa_message_id: str | None = None,
+    forwarded: bool = False,
 ) -> dict[str, Any] | None:
     """Insert a message.
 
@@ -86,6 +92,17 @@ async def save(
     }
     if created_at is not None:
         payload["created_at"] = created_at.astimezone(timezone.utc).isoformat()
+    # Only what is set, so a plain text message reads the same as it always
+    # has to a database that has not had migration 0018 yet.
+    extras = {
+        "media_mime": media_mime,
+        "media_filename": media_filename,
+        "reply_to_wa_message_id": reply_to_wa_message_id,
+        "reply_to_text": reply_to_text,
+        "reacted_to_wa_message_id": reacted_to_wa_message_id,
+        "forwarded": forwarded or None,
+    }
+    payload.update({key: value for key, value in extras.items() if value})
 
     db = await get_db()
 
@@ -186,15 +203,15 @@ async def store_media(
     contact_id: str,
     content: bytes,
     mime_type: str,
+    filename: str | None = None,
 ) -> None:
     """Copy a message's photo or file into private storage and point the message at it.
 
-    Inbound photos customers send, and the photos and files staff send.
+    Everything customers send — photos, stickers, voice notes, videos,
+    documents — and the photos and files staff send.
     """
-    clean_mime = mime_type.split(";", 1)[0].strip().lower()
-    extension = MEDIA_EXTENSIONS.get(clean_mime)
-    if extension is None:
-        raise ValueError(f"unsupported message media type: {clean_mime}")
+    clean_mime = mime_type.split(";", 1)[0].strip().lower() or "application/octet-stream"
+    extension = MEDIA_EXTENSIONS.get(clean_mime) or _extension_from(filename)
     if not content:
         raise ValueError("message media is empty")
 
@@ -211,7 +228,66 @@ async def store_media(
             "upsert": "true",
         },
     )
-    await db.table(TABLE).update({"media_path": path}).eq("id", message_id).execute()
+    patch: dict[str, Any] = {"media_path": path}
+    try:
+        await db.table(TABLE).update(
+            patch | {"media_mime": clean_mime, "media_size": len(content)}
+            | ({"media_filename": filename} if filename else {})
+        ).eq("id", message_id).execute()
+    except Exception:
+        # A database without migration 0018 still gets the path.
+        await db.table(TABLE).update(patch).eq("id", message_id).execute()
+
+
+def _extension_from(filename: str | None) -> str:
+    """".pdf" from "receipt.pdf"; ".bin" when the name says nothing usable."""
+    name = (filename or "").rsplit("/", 1)[-1]
+    if "." in name:
+        ext = name.rsplit(".", 1)[-1].lower()
+        if ext.isalnum() and len(ext) <= 8:
+            return f".{ext}"
+    return ".bin"
+
+
+async def get(business_id: str, message_id: str) -> dict[str, Any] | None:
+    """One message of this shop's, by our own id: what staff reply to or react to."""
+    db = await get_db()
+    res = (
+        await db.table(TABLE)
+        .select("id,contact_id,direction,sender,body,message_type,media_filename,wa_message_id")
+        .eq("business_id", business_id)
+        .eq("id", message_id)
+        .limit(1)
+        .execute()
+    )
+    return first(res)
+
+
+async def get_by_wa_id(wa_message_id: str) -> dict[str, Any] | None:
+    """One message by Meta's id: what a reply quotes, or a reaction points at."""
+    db = await get_db()
+    res = (
+        await db.table(TABLE)
+        .select("id,direction,sender,body,message_type,media_filename,contact_id")
+        .eq("wa_message_id", wa_message_id)
+        .limit(1)
+        .execute()
+    )
+    return first(res)
+
+
+def snippet(row: dict[str, Any] | None, limit: int = 160) -> str | None:
+    """How a quoted message reads in one line, the way WhatsApp shows it."""
+    if not row:
+        return None
+    body = " ".join(str(row.get("body") or "").split())
+    if not body or body.startswith("["):
+        body = {
+            "image": "📷 Photo", "sticker": "Sticker", "video": "🎥 Video",
+            "audio": "🎤 Voice message", "voice": "🎤 Voice message",
+            "document": f"📄 {row.get('media_filename') or 'Document'}",
+        }.get(str(row.get("message_type")), body or "Message")
+    return body[:limit] + ("…" if len(body) > limit else "")
 
 
 async def signed_media_url(
@@ -264,7 +340,8 @@ async def history(contact_id: str, limit: int = 10) -> list[dict[str, Any]]:
         await db.table(TABLE)
         .select(
             "direction,sender,body,message_type,transcript,transcription_status,"
-            "image_description,image_analysis_status,created_at"
+            "image_description,image_analysis_status,created_at,"
+            "media_filename,media_mime,reply_to_text,forwarded"
         )
         .eq("contact_id", contact_id)
         .order("created_at", desc=True)

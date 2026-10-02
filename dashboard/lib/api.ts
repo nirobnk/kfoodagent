@@ -81,18 +81,32 @@ export interface SendResult {
 }
 
 export const api = {
-  sendMessage(contactId: string, body: string, takeOver = true) {
+  sendMessage(contactId: string, body: string, takeOver = true, replyToId?: string) {
     return request<SendResult>('/messages/send', {
       method: 'POST',
-      body: JSON.stringify({ contact_id: contactId, body, take_over: takeOver }),
+      body: JSON.stringify({
+        contact_id: contactId,
+        body,
+        take_over: takeOver,
+        reply_to_message_id: replyToId ?? null,
+      }),
     });
   },
 
-  sendMedia(contactId: string, file: File, caption = '', takeOver = true) {
+  /** React to a customer's message; an empty emoji takes the reaction back. */
+  react(messageId: string, emoji: string) {
+    return request<SendResult>(`/messages/${messageId}/react`, {
+      method: 'POST',
+      body: JSON.stringify({ emoji }),
+    });
+  },
+
+  sendMedia(contactId: string, file: File, caption = '', takeOver = true, replyToId?: string) {
     const form = new FormData();
     form.append('contact_id', contactId);
     form.append('caption', caption);
     form.append('take_over', String(takeOver));
+    form.append('reply_to_message_id', replyToId ?? '');
     form.append('file', file, file.name);
     return request<SendResult>('/messages/send-media', { method: 'POST', body: form });
   },
@@ -333,6 +347,8 @@ export function explainSendFailure(reason: string | null): string {
       return 'That file is empty.';
     case 'unsupported_file':
       return 'WhatsApp cannot send that kind of file. Photos (JPG, PNG), MP4 videos, audio, PDF and Office documents work.';
+    case 'nothing_to_react_to':
+      return 'That message cannot be reacted to.';
     case 'file_too_large':
       return 'That file is too big. Photos up to 5 MB, video and audio up to 16 MB, documents up to 25 MB.';
     default:

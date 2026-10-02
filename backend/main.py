@@ -211,6 +211,16 @@ async def receive_webhook(
 # ---------------------------------------------------------------------------
 # Staff API — everything below requires a signed-in staff member
 # ---------------------------------------------------------------------------
+async def _quoted_or_none(message_id: str | None, contact: dict[str, Any]) -> dict[str, Any] | None:
+    """The message staff are replying to, if it belongs to this chat."""
+    if not message_id:
+        return None
+    message = await db.messages.get(BUSINESS_ID, message_id)
+    if message is None or str(message.get("contact_id")) != str(contact["id"]):
+        raise HTTPException(status_code=404, detail="message to reply to not found")
+    return message
+
+
 async def _contact_or_404(contact_id: str) -> dict[str, Any]:
     contact = await db.contacts.get_by_id(BUSINESS_ID, contact_id)
     if contact is None:
@@ -233,7 +243,11 @@ async def send_message(
         )
 
     result = await outbound.send_text(
-        business_id=BUSINESS_ID, contact=contact, body=payload.body, sender="human"
+        business_id=BUSINESS_ID,
+        contact=contact,
+        body=payload.body,
+        sender="human",
+        reply_to=await _quoted_or_none(payload.reply_to_message_id, contact),
     )
     log.info(
         "staff message",
@@ -254,6 +268,7 @@ async def send_media_message(
     contact_id: str = Form(...),
     caption: str = Form(""),
     take_over: bool = Form(True),
+    reply_to_message_id: str = Form(""),
     file: UploadFile = File(...),
     staff: Principal = Depends(require_staff),
 ) -> schemas.SendMessageResponse:
@@ -285,11 +300,35 @@ async def send_media_message(
         filename=file.filename or "",
         caption=caption,
         sender="human",
+        reply_to=await _quoted_or_none(reply_to_message_id or None, contact),
     )
     log.info(
         "staff media",
         extra={"staff": staff.label, "contact_id": contact["id"], "ok": result.ok,
                "reason": result.reason, "bytes": len(content), "mime": file.content_type},
+    )
+    return schemas.SendMessageResponse(
+        ok=result.ok, wa_message_id=result.wa_message_id, reason=result.reason
+    )
+
+
+@app.post("/messages/{message_id}/react", response_model=schemas.SendMessageResponse)
+async def react_to_message(
+    message_id: str,
+    payload: schemas.ReactRequest,
+    staff: Principal = Depends(require_staff),
+) -> schemas.SendMessageResponse:
+    """React to a customer's message with an emoji; an empty one takes it back.
+
+    Not an answer, so the chat stays with whoever has it.
+    """
+    send_limiter.check(staff.user_id)
+    target = await db.messages.get(BUSINESS_ID, message_id)
+    if target is None or target.get("direction") != "in":
+        raise HTTPException(status_code=404, detail="customer message not found")
+    contact = await _contact_or_404(str(target["contact_id"]))
+    result = await outbound.send_reaction(
+        business_id=BUSINESS_ID, contact=contact, target=target, emoji=payload.emoji.strip()
     )
     return schemas.SendMessageResponse(
         ok=result.ok, wa_message_id=result.wa_message_id, reason=result.reason

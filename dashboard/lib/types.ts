@@ -52,6 +52,14 @@ export interface Message {
   image_analysis_status: 'pending' | 'completed' | 'failed' | null;
   image_analysis_error: string | null;
   created_at: string;
+  // Added by migration 0018: the file itself, replies, reactions, forwards.
+  media_mime?: string | null;
+  media_filename?: string | null;
+  media_size?: number | null;
+  reply_to_wa_message_id?: string | null;
+  reply_to_text?: string | null;
+  reacted_to_wa_message_id?: string | null;
+  forwarded?: boolean | null;
 }
 
 export interface OrderItem {

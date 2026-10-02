@@ -72,7 +72,7 @@ def _to_lc_message(row: Mapping[str, Any]) -> Any:
         # for a caption or claim it heard details that were not transcribed.
         body = f"[{kind} transcript] {transcript}"
     elif (
-        kind == "image"
+        kind in {"image", "document"}
         and row.get("direction") == "in"
         and row.get("image_analysis_status") == "completed"
         and (row.get("image_description") or "").strip()
@@ -80,7 +80,14 @@ def _to_lc_message(row: Mapping[str, Any]) -> Any:
         # What the photo shows is a model's reading of it, not the customer's
         # words; the caption, when there is one, follows as what they wrote.
         seen = (row.get("image_description") or "").strip()
-        body = f"[image — what it shows: {seen}]" + (f" Caption: {body}" if body else "")
+        label = "image" if kind == "image" else f'document "{row.get("media_filename") or "file"}"'
+        body = f"[{label} — what it shows: {seen}]" + (f" Caption: {body}" if body else "")
+    elif kind == "document" and row.get("direction") == "in":
+        # A file nobody could read: say what it is called, which is often
+        # enough ("receipt.pdf", "order list.xlsx").
+        name = row.get("media_filename") or "file"
+        tail = f" Caption: {body}" if body else " (no caption — you cannot open this, work out what it is)"
+        body = f'[document "{name}"]{tail}'
     elif not body:
         # An attachment with no caption. Spelled out rather than left as an
         # empty turn, because the commonest one in this shop is a bank slip
@@ -95,6 +102,11 @@ def _to_lc_message(row: Mapping[str, Any]) -> Any:
         # answer as though it had seen the attachment.
         body = f"[{kind}] {body}"
     if row.get("direction") == "in":
+        if row.get("forwarded"):
+            body = f"[forwarded] {body}"
+        if row.get("reply_to_text"):
+            # Swipe-to-reply: "this one" means the message they quoted.
+            body = f'[replying to: "{row["reply_to_text"]}"] {body}'
         return HumanMessage(content=body)
     if row.get("sender") == "human":
         return AIMessage(content=f"(staff) {body}")
@@ -124,7 +136,9 @@ async def load_context(state: AgentState, config: RunnableConfig) -> dict[str, A
         )
     )
 
-    conversation = [_to_lc_message(row) for row in history]
+    conversation = [
+        _to_lc_message(row) for row in history if row.get("message_type") != "reaction"
+    ]
 
     # The inbound message is already in the database by the time the agent
     # runs, so only append it when history did not pick it up.

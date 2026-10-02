@@ -22,7 +22,9 @@ from tests.fakes import FakeSupabase
 
 CONTACT_ID = "22222222-2222-2222-2222-222222222222"
 OTHER_ID = "33333333-3333-3333-3333-333333333333"
-NOW = datetime(2026, 9, 19, 12, 0, tzinfo=timezone.utc)
+# Today at noon, not a fixed date: /crm/analytics measures its window from
+# the real clock, so fixtures pinned to one day drift out of it as weeks pass.
+NOW = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
 
 
 def order(
@@ -437,7 +439,7 @@ def test_analytics_credits_orders_to_the_ad_that_started_the_chat(client, wired)
                 "source_type": "ad",
                 "source_id": "120210000000001",
                 "headline": "Korean ramen delivered",
-                "created_at": (datetime.now(timezone.utc) - timedelta(days=10)).isoformat(),
+                "created_at": (NOW - timedelta(days=10)).isoformat(),
             }
         ],
     )

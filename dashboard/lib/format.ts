@@ -70,10 +70,46 @@ export function contactLabel(contact: Pick<Contact, 'name' | 'wa_id'>): string {
   return contact.name?.trim() || `+${contact.wa_id}`;
 }
 
+/** One line for the chat list, the way WhatsApp previews each kind of message. */
 export function messagePreview(message: Message | undefined): string {
   if (!message) return 'No messages yet';
+  const caption = message.body && !message.body.startsWith('[') ? message.body : '';
+  switch (message.message_type) {
+    case 'image':
+      return `📷 ${caption || 'Photo'}`;
+    case 'sticker':
+      return '🙂 Sticker';
+    case 'video':
+      return `🎥 ${caption || 'Video'}`;
+    case 'audio':
+    case 'voice':
+      return '🎤 Voice message';
+    case 'document':
+      return `📄 ${message.media_filename || caption || 'Document'}`;
+    case 'reaction':
+      return message.body ? `Reacted ${message.body}` : 'Removed a reaction';
+    case 'contacts':
+      return `👤 ${message.body?.replace('[shared contact] ', '') || 'Contact'}`;
+    case 'location':
+      return '📍 Location';
+    case 'unsupported':
+      return 'Message WhatsApp did not pass on';
+  }
   if (message.body) return message.body;
   return `[${message.message_type}]`;
+}
+
+export function fileSize(bytes: number | null | undefined): string {
+  if (!bytes) return '';
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+/** "PDF", "XLSX", "MP3" — what a file is, from its name or its type. */
+export function fileKind(name: string | null | undefined, mime: string | null | undefined): string {
+  const ext = name?.includes('.') ? name.split('.').pop() : null;
+  if (ext && ext.length <= 5) return ext.toUpperCase();
+  return (mime?.split('/').pop() ?? 'file').toUpperCase().slice(0, 8);
 }
 
 export function orderSummary(order: Order): string {

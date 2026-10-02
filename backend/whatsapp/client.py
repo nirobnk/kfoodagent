@@ -134,16 +134,34 @@ class WhatsAppClient:
         return _safe_json(response)
 
     # -- sending -----------------------------------------------------------
-    async def send_text(self, wa_id: str, body: str, *, preview_url: bool = False) -> str:
-        """Send free-form text. Only legal inside the 24-hour window."""
-        payload = {
+    async def send_text(
+        self, wa_id: str, body: str, *, preview_url: bool = False, reply_to: str | None = None
+    ) -> str:
+        """Send free-form text. Only legal inside the 24-hour window.
+
+        `reply_to` is a message id to quote, as a swipe-to-reply does.
+        """
+        payload: dict[str, Any] = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
             "to": wa_id,
             "type": "text",
             "text": {"preview_url": preview_url, "body": body[:4096]},
         }
+        if reply_to:
+            payload["context"] = {"message_id": reply_to}
         return await self._send(payload, wa_id=wa_id, kind="text")
+
+    async def send_reaction(self, wa_id: str, message_id: str, emoji: str) -> str:
+        """React to one of their messages; an empty emoji takes the reaction back."""
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": wa_id,
+            "type": "reaction",
+            "reaction": {"message_id": message_id, "emoji": emoji},
+        }
+        return await self._send(payload, wa_id=wa_id, kind="reaction")
 
     async def send_image(
         self, wa_id: str, image_url: str = "", *, caption: str = "", media_id: str | None = None
@@ -176,6 +194,7 @@ class WhatsAppClient:
         *,
         caption: str = "",
         filename: str | None = None,
+        reply_to: str | None = None,
     ) -> str:
         """Send an uploaded image, video, audio file or document. 24-hour window only.
 
@@ -195,6 +214,8 @@ class WhatsAppClient:
             "type": kind,
             kind: media,
         }
+        if reply_to:
+            payload["context"] = {"message_id": reply_to}
         return await self._send(payload, wa_id=wa_id, kind=kind)
 
     async def send_template(
@@ -221,13 +242,27 @@ class WhatsAppClient:
         }
         return await self._send(payload, wa_id=wa_id, kind=f"template:{template_name}")
 
-    async def mark_read(self, wa_message_id: str) -> None:
-        """Best-effort read receipt. A failure here must never break a reply."""
-        payload = {
+    async def mark_read(self, wa_message_id: str, *, typing: bool = False) -> None:
+        """Best-effort read receipt. A failure here must never break a reply.
+
+        With `typing`, their phone also shows "typing…" until the reply lands
+        or 25 seconds pass. If Meta refuses that, the plain read receipt is
+        sent instead, so the blue ticks never depend on it.
+        """
+        payload: dict[str, Any] = {
             "messaging_product": "whatsapp",
             "status": "read",
             "message_id": wa_message_id,
         }
+        if typing:
+            try:
+                await self._post(
+                    f"{self._phone_number_id}/messages",
+                    payload | {"typing_indicator": {"type": "text"}},
+                )
+                return
+            except Exception as exc:
+                log.debug("typing indicator refused", extra={"error": str(exc)})
         try:
             await self._post(f"{self._phone_number_id}/messages", payload)
         except Exception as exc:

@@ -28,6 +28,9 @@ from whatsapp import DownloadedMedia
 # What OpenAI's vision input accepts. WhatsApp sends photos as JPEG and
 # screenshots as PNG; anything else is refused rather than paid for.
 SUPPORTED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+# Bank apps send their transfer receipts as PDFs, often a scan with no text
+# in it at all. The vision model reads a PDF page as it reads a photo.
+PDF_MIME_TYPES = {"application/pdf"}
 
 KINDS = {"product", "payment_slip", "other"}
 
@@ -35,16 +38,16 @@ KINDS = {"product", "payment_slip", "other"}
 # keeps the prompt cheap should the shelf ever grow large.
 MAX_CATALOGUE_NAMES = 200
 
-INSTRUCTIONS = """You help a Korean food shop in Sri Lanka understand photos customers send on WhatsApp.
+INSTRUCTIONS = """You help a Korean food shop in Sri Lanka understand photos and files customers send on WhatsApp.
 
-Look at the image and answer with JSON only, in exactly this shape:
+Look at the image or document and answer with JSON only, in exactly this shape:
 {"kind": "product" | "payment_slip" | "other",
  "products": ["..."],
  "description": "..."}
 
 kind:
 - "product": the image shows food or drink packaging, a noodle dish, a menu, or a screenshot of a product.
-- "payment_slip": a bank transfer receipt, deposit slip, or banking-app payment confirmation.
+- "payment_slip": a bank transfer receipt, deposit slip, or banking-app payment confirmation — as a photo, a screenshot or a PDF.
 - "other": anything else.
 
 products: for "product" only. Name each distinct product you can see. If it is one of the shop's products listed below, copy that name exactly. Otherwise write the brand and product name as printed on the pack (translate Korean into the English name it is sold under, e.g. 불닭볶음면 -> "Samyang Buldak Hot Chicken Flavour Ramen"). Empty list otherwise.
@@ -100,6 +103,12 @@ def _parse(raw: str) -> ImageAnalysis:
     return ImageAnalysis(kind=kind, description=description, products=products)
 
 
+def can_read(mime_type: str) -> bool:
+    """Whether describe_image can open this kind of file at all."""
+    mime = (mime_type or "").split(";", 1)[0].strip().lower()
+    return mime in SUPPORTED_MIME_TYPES or mime in PDF_MIME_TYPES
+
+
 async def describe_image(
     media: DownloadedMedia,
     *,
@@ -107,13 +116,15 @@ async def describe_image(
     client: Any | None = None,
     model: str | None = None,
 ) -> ImageAnalysis:
-    """Describe one customer image in terms the sales agent can search with."""
+    """Describe one customer image or PDF in terms the sales agent can search with."""
     if not media.content:
         raise ImageAnalysisUnavailable("image was empty")
-    if len(media.content) > settings.image_max_bytes:
-        raise ImageAnalysisUnavailable("image exceeded the configured size limit")
     mime_type = media.mime_type.split(";", 1)[0].strip().lower()
-    if mime_type not in SUPPORTED_MIME_TYPES:
+    is_pdf = mime_type in PDF_MIME_TYPES
+    limit = settings.document_analysis_max_bytes if is_pdf else settings.image_max_bytes
+    if len(media.content) > limit:
+        raise ImageAnalysisUnavailable("file exceeded the configured size limit")
+    if mime_type not in SUPPORTED_MIME_TYPES and not is_pdf:
         raise ImageAnalysisUnavailable(f"unsupported image MIME type: {media.mime_type}")
 
     owned_client = client is None
@@ -129,6 +140,19 @@ async def describe_image(
 
     names = "\n".join(f"- {name}" for name in list(catalogue)[:MAX_CATALOGUE_NAMES])
     encoded = base64.b64encode(media.content).decode("ascii")
+    if is_pdf:
+        part: dict[str, Any] = {
+            "type": "file",
+            "file": {
+                "filename": media.filename or "document.pdf",
+                "file_data": f"data:application/pdf;base64,{encoded}",
+            },
+        }
+    else:
+        part = {
+            "type": "image_url",
+            "image_url": {"url": f"data:{mime_type};base64,{encoded}", "detail": "auto"},
+        }
     try:
         result = await client.chat.completions.create(
             model=model or settings.image_analysis_model,
@@ -139,18 +163,7 @@ async def describe_image(
                     "role": "system",
                     "content": INSTRUCTIONS.replace("{catalogue}", names or "(not available)"),
                 },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{mime_type};base64,{encoded}",
-                                "detail": "auto",
-                            },
-                        }
-                    ],
-                },
+                {"role": "user", "content": [part]},
             ],
         )
         raw = result.choices[0].message.content if result.choices else ""

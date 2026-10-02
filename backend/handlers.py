@@ -27,8 +27,8 @@ from agent.usage import TokenUsage
 from config import settings
 from fastpath import fast_reply
 from transcription import transcribe_audio
-from vision import describe_image
-from whatsapp import InboundMessage, StatusUpdate, get_client
+from vision import can_read, describe_image
+from whatsapp import DownloadedMedia, InboundMessage, StatusUpdate, get_client
 
 log = logging.getLogger(__name__)
 
@@ -160,22 +160,35 @@ async def _prepare(message: InboundMessage, business_id: str) -> Prepared | None
     )
     contact_id = str(contact["id"])
 
+    is_reaction = message.type == "reaction"
+    quoted = None
+    if message.reply_to:
+        try:
+            quoted = await db.messages.get_by_wa_id(message.reply_to)
+        except Exception:
+            log.warning("could not look up the quoted message", exc_info=True)
+
     saved = await db.messages.save(
         business_id=business_id,
         contact_id=contact_id,
         direction="in",
         sender="customer",
-        body=message.text,
+        # A reaction's body is its emoji, so the chat can draw it.
+        body=message.reaction_emoji if is_reaction else message.text,
         message_type=message.type,
         wa_message_id=message.wa_message_id,
         status="delivered",
         transcription_status=(
             "pending" if message.type in {"audio", "voice"} and message.media_id else None
         ),
-        image_analysis_status=(
-            "pending" if message.type == "image" and message.media_id else None
-        ),
+        image_analysis_status="pending" if _readable(message) else None,
         created_at=message.timestamp,
+        media_mime=(message.media_mime or "").split(";", 1)[0].strip() or None,
+        media_filename=message.media_filename,
+        reply_to_wa_message_id=message.reply_to,
+        reply_to_text=db.messages.snippet(quoted),
+        reacted_to_wa_message_id=message.reaction_to,
+        forwarded=message.forwarded,
     )
     if saved is None:
         # Another delivery of the same message won the race.
@@ -183,30 +196,41 @@ async def _prepare(message: InboundMessage, business_id: str) -> Prepared | None
                  extra={"wa_message_id": message.wa_message_id})
         return None
 
-    # Opens the 24-hour free-text window.
-    contact = (
-        await db.contacts.touch_inbound(
-            business_id, contact_id, at=message.timestamp, name=message.profile_name
+    if not is_reaction:
+        # Opens the 24-hour free-text window. A reaction is left out: it is
+        # not clear Meta counts it, and sending on a closed window fails.
+        contact = (
+            await db.contacts.touch_inbound(
+                business_id, contact_id, at=message.timestamp, name=message.profile_name
+            )
+            or contact
         )
-        or contact
-    )
-    await db.contacts.bump_unread(business_id, contact_id)
+        await db.contacts.bump_unread(business_id, contact_id)
 
     if message.referral:
         await _record_referral(message, business_id, contact_id, str(saved["id"]))
 
     client = get_client()
-    await client.mark_read(message.wa_message_id)
+    # "typing…" on their phone while the agent works out a reply.
+    await client.mark_read(
+        message.wa_message_id,
+        typing=_expects_reply(message) and not contact.get("human_takeover"),
+    )
+
+    message_id = str(saved["id"])
+    media = None
+    if message.media_id:
+        media = await _keep_media(message, message_id, business_id, contact_id, client)
 
     incoming_text = message.text or ""
     if message.type in {"audio", "voice"} and message.media_id:
-        incoming_text = await _transcribe_voice(message, str(saved["id"]), client)
-    elif message.type == "image" and message.media_id:
+        incoming_text = await _transcribe_voice(message, message_id, media)
+    elif _readable(message):
         # The description lands on the message row, and the agent reads it
         # from history next to the caption. incoming_text stays the caption:
         # it is what the customer wrote, and the model's view of the photo
         # must not be passed off as their words.
-        await _process_image(message, str(saved["id"]), business_id, contact_id, client)
+        await _read_file(message_id, business_id, media)
 
     return Prepared(
         message=message,
@@ -248,6 +272,11 @@ async def _respond(batch: list[Prepared], business_id: str) -> None:
     message = last.message
     contact = last.contact
     contact_id = str(contact["id"])
+
+    if message.type == "reaction":
+        # A thumbs-up is not a question, and "Got your message 🙏" in answer
+        # to one reads as a bot.
+        return
 
     if contact.get("human_takeover"):
         # The agent stays out of it — but silence is not a neutral act. A
@@ -421,8 +450,58 @@ async def _store_receipt_media(
         )
 
 
+def _readable(message: InboundMessage) -> bool:
+    """A photo, or a document the vision model can open (a PDF or an image file)."""
+    if not message.media_id:
+        return False
+    if message.type == "image":
+        return True
+    return message.type == "document" and can_read(message.media_mime or "")
+
+
+async def _keep_media(
+    message: InboundMessage,
+    message_id: str,
+    business_id: str,
+    contact_id: str,
+    client: Any,
+) -> DownloadedMedia | None:
+    """Download what the customer sent, once, and keep a copy for staff. Never fatal.
+
+    Meta's copy expires within days; without this the dashboard cannot show a
+    voice note, a sticker or the PDF receipt they sent. The same bytes are
+    handed on to transcription or the vision model.
+    """
+    try:
+        media = await client.download_media(
+            str(message.media_id), max_bytes=settings.media_keep_max_bytes
+        )
+    except Exception as exc:
+        log.warning(
+            "inbound media could not be downloaded",
+            extra={"message_id": message_id, "type": message.type,
+                   "error_type": type(exc).__name__},
+        )
+        return None
+    try:
+        await db.messages.store_media(
+            message_id=message_id,
+            business_id=business_id,
+            contact_id=contact_id,
+            content=media.content,
+            mime_type=media.mime_type,
+            filename=message.media_filename,
+        )
+    except Exception as exc:
+        log.warning(
+            "inbound media could not be stored",
+            extra={"message_id": message_id, "error_type": type(exc).__name__},
+        )
+    return media
+
+
 async def _transcribe_voice(
-    message: InboundMessage, message_id: str, client: Any
+    message: InboundMessage, message_id: str, media: DownloadedMedia | None
 ) -> str:
     """Return usable text while making transcription failure non-fatal."""
     if not settings.voice_transcription_configured:
@@ -430,11 +509,13 @@ async def _transcribe_voice(
         await db.messages.fail_transcription(message_id, error)
         log.warning(error, extra={"message_id": message_id})
         return message.text or ""
+    if media is None:
+        await db.messages.fail_transcription(message_id, "download failed")
+        return message.text or ""
 
     try:
-        media = await client.download_media(
-            str(message.media_id), max_bytes=settings.voice_max_bytes
-        )
+        if len(media.content) > settings.voice_max_bytes:
+            raise ValueError("voice note exceeded the configured size limit")
         transcript = await transcribe_audio(media)
         await db.messages.complete_transcription(message_id, transcript)
         return transcript
@@ -448,48 +529,17 @@ async def _transcribe_voice(
         return message.text or ""
 
 
-async def _process_image(
-    message: InboundMessage,
-    message_id: str,
-    business_id: str,
-    contact_id: str,
-    client: Any,
+async def _read_file(
+    message_id: str, business_id: str, media: DownloadedMedia | None
 ) -> None:
-    """Keep the photo for staff and record what it shows. Never fatal.
+    """Record what a photo or a PDF shows. Never fatal.
 
-    Downloaded once and used twice. If analysis fails the agent sees the photo
-    as it did before analysis existed — an attachment it cannot open — and
-    asks which product it is.
+    If it fails the agent sees the file as it did before — an attachment it
+    cannot open — and asks what it is.
     """
-    try:
-        media = await client.download_media(
-            str(message.media_id), max_bytes=settings.image_max_bytes
-        )
-    except Exception as exc:
-        await db.messages.fail_image_analysis(
-            message_id, f"download failed: {type(exc).__name__}: {exc}"
-        )
-        log.warning(
-            "inbound photo could not be downloaded",
-            extra={"message_id": message_id, "error_type": type(exc).__name__},
-        )
+    if media is None:
+        await db.messages.fail_image_analysis(message_id, "download failed")
         return
-
-    try:
-        # Meta's copy expires; without this the dashboard can never show it.
-        await db.messages.store_media(
-            message_id=message_id,
-            business_id=business_id,
-            contact_id=contact_id,
-            content=media.content,
-            mime_type=media.mime_type,
-        )
-    except Exception as exc:
-        log.warning(
-            "inbound photo could not be stored",
-            extra={"message_id": message_id, "error_type": type(exc).__name__},
-        )
-
     if not settings.image_analysis_configured:
         error = "image analysis is not configured"
         await db.messages.fail_image_analysis(message_id, error)

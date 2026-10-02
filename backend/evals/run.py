@@ -34,6 +34,7 @@ RESULTS = HERE / "results"
 PRICES = {
     "gpt-5.6-terra": (2.00, 0.20, 2.50, 12.00),
     "gpt-5.6-luna": (0.20, 0.02, 0.25, 1.20),
+    "gpt-6-luna": (0.10, 0.01, 0.125, 0.50),
 }
 
 PRICE_RE = re.compile(r"Rs\.?\s?\d")
@@ -105,6 +106,16 @@ async def say(contact_id: str, item: Any, n: int) -> str:
                                sender="customer", body=item, message_type="text",
                                wa_message_id=wa_id, status="delivered")
         return item
+    if "document" in item:
+        caption = item.get("caption") or ""
+        row = await db.messages.save(business_id=business_id, contact_id=contact_id,
+                                     direction="in", sender="customer", body=caption or None,
+                                     message_type="document", wa_message_id=wa_id,
+                                     status="delivered", image_analysis_status="pending",
+                                     media_mime="application/pdf",
+                                     media_filename=item.get("filename") or "file.pdf")
+        await db.messages.complete_image_analysis(str(row["id"]), item["document"])
+        return caption
     if "image" in item:
         caption = item.get("caption") or ""
         row = await db.messages.save(business_id=business_id, contact_id=contact_id,

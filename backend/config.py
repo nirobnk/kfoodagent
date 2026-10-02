@@ -118,6 +118,11 @@ class Settings(BaseSettings):
     # WhatsApp caps images at 5 MB; the ceiling leaves room for documents.
     image_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1, le=10 * 1024 * 1024)
     image_analysis_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+    # PDFs customers send (bank receipts, mostly) are read by the same model.
+    document_analysis_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=30 * 1024 * 1024)
+    # Every file a customer sends is kept so staff can open it in the chat.
+    # Meta allows documents up to 100 MB; the storage bucket keeps up to 50.
+    media_keep_max_bytes: int = Field(default=50 * 1024 * 1024, ge=1, le=50 * 1024 * 1024)
     # Blank means "whatever DEFAULT_MODELS says for the provider in use", so
     # LLM_PROVIDER can be changed on its own.
     llm_model: str = ""
