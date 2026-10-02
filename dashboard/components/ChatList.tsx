@@ -1,6 +1,6 @@
 'use client';
 
-import { contactLabel, formatRelative, canSendFreeText } from '@/lib/format';
+import { contactLabel, formatRelative, canSendFreeText, messagePreview } from '@/lib/format';
 import { Icon } from './ui/Icon';
 import type { Contact, Message } from '@/lib/types';
 
@@ -109,8 +109,7 @@ export function ChatList({
                   <span className="mt-0.5 flex items-center gap-2">
                     <span className={`truncate text-sm ${contact.unread_count > 0 ? 'font-medium text-ink' : 'text-soy'}`}>
                       {preview?.direction === 'out' ? 'You: ' : ''}
-                      {preview?.message_type === 'image' && '📷 '}
-                      {preview?.body || 'No messages yet'}
+                      {messagePreview(preview)}
                     </span>
                     {contact.unread_count > 0 && (
                       <span className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-wa-lime px-1.5 font-mono text-[10px] font-semibold text-wa-deep tnum">

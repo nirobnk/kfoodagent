@@ -80,7 +80,7 @@ async def test_unknown_kind_becomes_other():
     "media",
     [
         DownloadedMedia(b"", "image/jpeg", "empty.jpg"),
-        DownloadedMedia(b"%PDF", "application/pdf", "slip.pdf"),
+        DownloadedMedia(b"PK\x03\x04", "application/zip", "photos.zip"),
     ],
 )
 async def test_unusable_media_is_refused_before_any_call(media):
@@ -97,3 +97,20 @@ async def test_unreadable_answer_raises(content):
 
     with pytest.raises(ImageAnalysisUnavailable):
         await describe_image(PHOTO, client=client)
+
+
+async def test_a_pdf_is_read_as_a_file_not_an_image():
+    """Bank apps send receipts as PDFs; a customer's went unread on Oct 2."""
+    client, completions = client_returning(
+        {"kind": "payment_slip", "description": "A transfer of LKR 4,150.00."}
+    )
+
+    result = await describe_image(
+        DownloadedMedia(b"%PDF-1.4 slip", "application/pdf", "receipt.pdf"), client=client
+    )
+
+    assert result.as_text() == "Payment slip. A transfer of LKR 4,150.00."
+    [part] = completions.calls[0]["messages"][1]["content"]
+    assert part["type"] == "file"
+    assert part["file"]["filename"] == "receipt.pdf"
+    assert part["file"]["file_data"].startswith("data:application/pdf;base64,")

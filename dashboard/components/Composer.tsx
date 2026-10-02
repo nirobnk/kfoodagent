@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { api, explainSendFailure } from '@/lib/api';
 import { TemplatePicker } from './TemplatePicker';
 import { Icon } from './ui/Icon';
-import type { Contact } from '@/lib/types';
+import { messagePreview } from '@/lib/format';
+import type { Contact, Message } from '@/lib/types';
 
 // What WhatsApp will deliver, so a wrong file is caught here, before the
 // upload, rather than coming back as an error. The backend checks again.
@@ -26,11 +27,17 @@ function sizeLabel(bytes: number): string {
 export function Composer({
   contact,
   windowOpen,
+  replyTo = null,
+  contactName,
+  onCancelReply,
   onSent,
   onTakeover,
 }: {
   contact: Contact;
   windowOpen: boolean;
+  replyTo?: Message | null;
+  contactName?: string;
+  onCancelReply?: () => void;
   onSent: () => void;
   onTakeover: () => void;
 }) {
@@ -41,6 +48,12 @@ export function Composer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const picker = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+
+  // Choosing Reply on a message puts the cursor here, ready to type.
+  useEffect(() => {
+    if (replyTo) box.current?.focus();
+  }, [replyTo]);
 
   // A thumbnail for a photo; freed when the file changes or the chat closes.
   useEffect(() => {
@@ -74,8 +87,8 @@ export function Composer({
       // so the customer never gets two answers at once. With a file, the text
       // goes as its caption.
       const result = file
-        ? await api.sendMedia(contact.id, file, text, true)
-        : await api.sendMessage(contact.id, text, true);
+        ? await api.sendMedia(contact.id, file, text, true, replyTo?.id)
+        : await api.sendMessage(contact.id, text, true, replyTo?.id);
       if (!result.ok) {
         setError(explainSendFailure(result.reason));
       } else {
@@ -120,6 +133,31 @@ export function Composer({
           <p className="mb-2 rounded-lg bg-chilli-wash px-3 py-2 text-xs text-chilli-dark">
             {error}
           </p>
+        )}
+
+        {replyTo && (
+          // What this reply quotes, as WhatsApp shows above the box.
+          <div className="mb-2 flex items-center gap-2 rounded-xl bg-card px-3 py-2 shadow-card">
+            <div className="min-w-0 flex-1 border-l-4 border-wa-green pl-2">
+              <p className="text-2xs font-semibold text-wa-green-dark">
+                Replying to{' '}
+                {replyTo.direction === 'in'
+                  ? contactName || 'customer'
+                  : replyTo.sender === 'agent'
+                    ? 'the agent'
+                    : 'you'}
+              </p>
+              <p className="truncate text-xs text-[#667781]">{messagePreview(replyTo)}</p>
+            </div>
+            <button
+              onClick={onCancelReply}
+              disabled={busy}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#667781] hover:bg-black/5"
+              aria-label="Cancel reply"
+            >
+              <Icon name="close" className="h-4 w-4" />
+            </button>
+          </div>
         )}
 
         {file && (
@@ -170,6 +208,7 @@ export function Composer({
             <Icon name="clip" className="h-5 w-5" />
           </button>
           <textarea
+            ref={box}
             rows={1}
             value={body}
             onChange={(event) => setBody(event.target.value)}

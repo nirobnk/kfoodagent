@@ -97,8 +97,11 @@ async def send_text(
     body: str,
     sender: str = "agent",
     force: bool = False,
+    reply_to: Mapping[str, Any] | None = None,
 ) -> SendResult:
     """Send free-form text if the 24-hour window is open.
+
+    `reply_to` is the message row being quoted, as swipe-to-reply does.
 
     Outside the window Meta rejects free text, so we refuse before spending the
     call and tell the caller to use a template instead.
@@ -114,9 +117,15 @@ async def send_text(
         )
         return SendResult(ok=False, reason="window_closed")
 
+    quoted = _quote(reply_to)
     client = get_client()
     try:
-        wa_message_id = await client.send_text(contact["wa_id"], body)
+        if quoted["reply_to_wa_message_id"]:
+            wa_message_id = await client.send_text(
+                contact["wa_id"], body, reply_to=quoted["reply_to_wa_message_id"]
+            )
+        else:
+            wa_message_id = await client.send_text(contact["wa_id"], body)
     except WhatsAppError as exc:
         await db.messages.save(
             business_id=business_id,
@@ -126,6 +135,7 @@ async def send_text(
             body=body,
             status="failed",
             error=str(exc)[:500],
+            **quoted,
         )
         return SendResult(ok=False, reason=f"send_failed:{exc.code or 'unknown'}")
 
@@ -137,6 +147,56 @@ async def send_text(
         body=body,
         wa_message_id=wa_message_id or None,
         status="sent",
+        **quoted,
+    )
+    return SendResult(ok=True, wa_message_id=wa_message_id)
+
+
+def _quote(reply_to: Mapping[str, Any] | None) -> dict[str, Any]:
+    """The reply-to fields for a message row, empty when there is nothing to quote."""
+    if not reply_to or not reply_to.get("wa_message_id"):
+        return {"reply_to_wa_message_id": None, "reply_to_text": None}
+    return {
+        "reply_to_wa_message_id": str(reply_to["wa_message_id"]),
+        "reply_to_text": db.messages.snippet(dict(reply_to)),
+    }
+
+
+async def send_reaction(
+    *,
+    business_id: str,
+    contact: Mapping[str, Any],
+    target: Mapping[str, Any],
+    emoji: str,
+    sender: str = "human",
+) -> SendResult:
+    """React to one of the customer's messages; an empty emoji takes it back.
+
+    A reaction is a message to Meta — it needs the 24-hour window — but it is
+    not an answer, so it does not take the chat over from the agent.
+    """
+    target_id = str(target.get("wa_message_id") or "")
+    if not target_id:
+        return SendResult(ok=False, reason="nothing_to_react_to")
+    if not can_send_free_text(contact):
+        return SendResult(ok=False, reason="window_closed")
+
+    client = get_client()
+    try:
+        wa_message_id = await client.send_reaction(contact["wa_id"], target_id, emoji)
+    except WhatsAppError as exc:
+        return SendResult(ok=False, reason=f"send_failed:{exc.code or 'unknown'}")
+
+    await db.messages.save(
+        business_id=business_id,
+        contact_id=contact["id"],
+        direction="out",
+        sender=sender,
+        body=emoji or None,
+        message_type="reaction",
+        wa_message_id=wa_message_id or None,
+        status="sent",
+        reacted_to_wa_message_id=target_id,
     )
     return SendResult(ok=True, wa_message_id=wa_message_id)
 
@@ -274,6 +334,7 @@ async def send_media(
     filename: str,
     caption: str = "",
     sender: str = "human",
+    reply_to: Mapping[str, Any] | None = None,
 ) -> SendResult:
     """Send a photo, video, voice/audio file or document a person chose.
 
@@ -312,11 +373,13 @@ async def send_media(
     else:
         body = caption or MEDIA_LABELS[kind]
 
+    quoted = _quote(reply_to)
     client = get_client()
     try:
         media_id = await client.upload_media(content, mime, name)
         wa_message_id = await client.send_media(
-            contact["wa_id"], kind, media_id, caption=caption, filename=name
+            contact["wa_id"], kind, media_id, caption=caption, filename=name,
+            reply_to=quoted["reply_to_wa_message_id"],
         )
     except WhatsAppError as exc:
         await db.messages.save(
@@ -328,6 +391,9 @@ async def send_media(
             message_type=kind,
             status="failed",
             error=str(exc)[:500],
+            media_mime=mime,
+            media_filename=name,
+            **quoted,
         )
         return SendResult(ok=False, reason=f"send_failed:{exc.code or 'unknown'}")
 
@@ -340,6 +406,9 @@ async def send_media(
         message_type=kind,
         wa_message_id=wa_message_id or None,
         status="sent",
+        media_mime=mime,
+        media_filename=name,
+        **quoted,
     )
     if saved is not None:
         try:
@@ -349,6 +418,7 @@ async def send_media(
                 contact_id=str(contact["id"]),
                 content=content,
                 mime_type=mime,
+                filename=name,
             )
         except Exception:
             # The customer has it; only the dashboard copy is missing.

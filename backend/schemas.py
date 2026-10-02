@@ -22,6 +22,14 @@ class SendMessageRequest(BaseModel):
         default=True,
         description="Switch the chat to human handling, so the agent stays quiet.",
     )
+    reply_to_message_id: str | None = Field(
+        default=None, description="Quote this message, as WhatsApp's swipe-to-reply does."
+    )
+
+
+class ReactRequest(BaseModel):
+    # An emoji can be several code points (skin tones, flags); "" takes it back.
+    emoji: str = Field(default="", max_length=16)
 
 
 class SendTemplateRequest(BaseModel):

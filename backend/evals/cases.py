@@ -21,6 +21,7 @@ total of the last one.
 
 An item in a turn is a string (a text message), or a dict:
   {"image": "<what the photo shows>", "caption": "..."}
+  {"document": "<what the file shows>", "filename": "receipt.pdf", "caption": "..."}
   {"voice": "<the transcript>"}
 """
 
@@ -326,6 +327,23 @@ CASES: list[dict] = [
             }},
         ],
         "end": {"orders": 1, "order_total": 4150},
+    },
+    {
+        "id": "pdf-receipt-after-order",
+        "source": "Oct 2: a customer paid and sent the bank's PDF receipt, which nobody could read",
+        "turns": [
+            {"say": ["I want one Hot Dak Carbo 5 pack"]},
+            {"say": ["Rangi Silva, 45 Temple Road, Kurunegala"], "expect": {"tools": ["create_order"]}},
+            {"say": [{
+                "document": "Payment slip. A fund transfer of LKR 4,150.00.",
+                "filename": "HNB transfer receipt.pdf",
+            }], "expect": {
+                "tools": ["record_payment_receipt"],
+                "not_contains": ["payment received", "payment is confirmed", "payment confirmed",
+                                 "received your payment"],
+            }},
+        ],
+        "end": {"orders": 1},
     },
     {
         "id": "order-next-month",

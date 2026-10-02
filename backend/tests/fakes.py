@@ -474,16 +474,21 @@ class FakeWhatsApp:
         self.image_media_ids: list[str | None] = []
         self.uploads: list[tuple[bytes, str, str]] = []
         self.media: list[tuple[str, str, str, str, str | None]] = []
+        self.reactions: list[tuple[str, str, str]] = []
+        self.replies_to: list[str | None] = []
+        self.typing: list[str] = []
         self.read_receipts: list[str] = []
         self.media_downloads: dict[str, Any] = {}
         self.downloaded_media_ids: list[str] = []
         self.fail_with = fail_with
         self._counter = 0
 
-    async def send_text(self, wa_id: str, body: str, **_: Any) -> str:
+    async def send_text(self, wa_id: str, body: str, *, reply_to: str | None = None,
+                        **_: Any) -> str:
         if self.fail_with:
             raise self.fail_with
         self.texts.append((wa_id, body))
+        self.replies_to.append(reply_to)
         self._counter += 1
         return f"wamid.OUT{self._counter}"
 
@@ -505,9 +510,16 @@ class FakeWhatsApp:
         self._counter += 1
         return f"wamid.TPL{self._counter}"
 
+    async def send_reaction(self, wa_id: str, message_id: str, emoji: str) -> str:
+        if self.fail_with:
+            raise self.fail_with
+        self.reactions.append((wa_id, message_id, emoji))
+        self._counter += 1
+        return f"wamid.REACT{self._counter}"
+
     async def send_media(
         self, wa_id: str, kind: str, media_id: str, *, caption: str = "",
-        filename: str | None = None,
+        filename: str | None = None, reply_to: str | None = None,
     ) -> str:
         if self.fail_with:
             raise self.fail_with
@@ -519,8 +531,10 @@ class FakeWhatsApp:
         self.uploads.append((content, mime_type, filename))
         return f"media-upload-{len(self.uploads)}"
 
-    async def mark_read(self, wa_message_id: str) -> None:
+    async def mark_read(self, wa_message_id: str, *, typing: bool = False) -> None:
         self.read_receipts.append(wa_message_id)
+        if typing:
+            self.typing.append(wa_message_id)
 
     async def download_media(self, media_id: str, *, max_bytes: int) -> Any:
         self.downloaded_media_ids.append(media_id)

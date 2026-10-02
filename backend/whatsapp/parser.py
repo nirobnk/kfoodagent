@@ -34,14 +34,22 @@ class InboundMessage:
     media_id: str | None = None
     media_mime: str | None = None
     caption: str | None = None
+    # A document's own file name, as the customer's phone had it.
+    media_filename: str | None = None
     # Set when the customer arrived by tapping a click-to-WhatsApp ad.
     referral: dict[str, Any] | None = None
+    # The message this one replies to (swipe-to-reply), by Meta's id.
+    reply_to: str | None = None
+    forwarded: bool = False
+    # A reaction: the emoji ("" when one is taken back) and what it is on.
+    reaction_emoji: str | None = None
+    reaction_to: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_supported(self) -> bool:
         """Can the agent act on this message as it stands?"""
-        return bool(self.text)
+        return bool(self.text) and self.type != "reaction"
 
 
 @dataclass(slots=True)
@@ -94,11 +102,14 @@ def _extract_text(message: dict[str, Any]) -> str | None:
 
     if mtype == "location":
         loc = message.get("location") or {}
-        name = loc.get("name") or loc.get("address")
-        if name:
-            return f"[location] {name}"
-        if loc.get("latitude") is not None:
-            return f"[location] {loc.get('latitude')},{loc.get('longitude')}"
+        place = ", ".join(str(p) for p in (loc.get("name"), loc.get("address")) if p)
+        lat, lng = loc.get("latitude"), loc.get("longitude")
+        link = f"https://maps.google.com/?q={lat},{lng}" if lat is not None and lng is not None else ""
+        text = " — ".join(p for p in (place, link) if p)
+        return f"[location] {text}" if text else None
+
+    if mtype == "contacts":
+        return _contacts_text(message.get("contacts") or [])
 
     return None
 
@@ -127,6 +138,22 @@ def _referral(message: dict[str, Any]) -> dict[str, Any] | None:
         "ctwa_clid": text("ctwa_clid"),
         "raw": referral,
     }
+
+
+def _contacts_text(cards: list[Any]) -> str | None:
+    """A shared contact card, as one line per person: name and numbers."""
+    people = []
+    for card in cards:
+        if not isinstance(card, dict):
+            continue
+        name = ((card.get("name") or {}).get("formatted_name") or "").strip()
+        phones = [
+            str(p.get("phone") or p.get("wa_id") or "").strip()
+            for p in card.get("phones") or [] if isinstance(p, dict)
+        ]
+        line = " ".join(p for p in [name or "Unnamed contact", *[x for x in phones if x]] if p)
+        people.append(line)
+    return f"[shared contact] {'; '.join(people)}" if people else None
 
 
 def parse_webhook(payload: dict[str, Any]) -> ParsedWebhook:
@@ -172,6 +199,8 @@ def parse_webhook(payload: dict[str, Any]) -> ParsedWebhook:
                 media = message.get(mtype) if mtype in MEDIA_TYPES else None
                 media = media if isinstance(media, dict) else {}
 
+                context = message.get("context") or {}
+                reaction = message.get("reaction") or {}
                 result.messages.append(
                     InboundMessage(
                         wa_id=wa_id,
@@ -184,7 +213,26 @@ def parse_webhook(payload: dict[str, Any]) -> ParsedWebhook:
                         media_id=media.get("id"),
                         media_mime=media.get("mime_type"),
                         caption=media.get("caption"),
+                        media_filename=media.get("filename"),
                         referral=_referral(message),
+                        # A forwarded message carries "forwarded" in its context
+                        # and no id worth quoting.
+                        reply_to=(
+                            str(context["id"])
+                            if context.get("id") and not context.get("forwarded")
+                            and not context.get("frequently_forwarded")
+                            else None
+                        ),
+                        forwarded=bool(
+                            context.get("forwarded") or context.get("frequently_forwarded")
+                        ),
+                        reaction_emoji=(
+                            str(reaction.get("emoji") or "") if mtype == "reaction" else None
+                        ),
+                        reaction_to=(
+                            str(reaction["message_id"])
+                            if mtype == "reaction" and reaction.get("message_id") else None
+                        ),
                         raw=message,
                     )
                 )

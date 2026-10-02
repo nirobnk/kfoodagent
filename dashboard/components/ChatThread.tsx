@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase';
-import { api } from '@/lib/api';
+import { api, explainSendFailure } from '@/lib/api';
 import { canSendFreeText, contactLabel, formatDayLabel } from '@/lib/format';
 import { useStickToBottom } from '@/lib/useStickToBottom';
 import { Composer } from './Composer';
-import { MessageBubble } from './MessageBubble';
+import { MessageBubble, type ShownReaction } from './MessageBubble';
 import { TakeoverToggle } from './TakeoverToggle';
 import { WindowBadge } from './WindowBadge';
 import { Icon } from './ui/Icon';
@@ -27,6 +27,9 @@ export function ChatThread({
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [highlight, setHighlight] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   // The parent passes an inline arrow, so its identity changes on every render
   // of the inbox — and a new message re-renders the inbox. Held in a ref, that
   // churn cannot reach the effect below, which would otherwise tear down the
@@ -60,6 +63,7 @@ export function ChatThread({
     setLoading(true);
     setError(null);
     setMessages([]);
+    setReplyTo(null);
 
     supabase
       .from('messages')
@@ -123,16 +127,62 @@ export function ChatThread({
 
   const windowOpen = canSendFreeText(contact);
 
+  // A reaction is drawn on the message it reacts to, not as a bubble of its
+  // own. Each side keeps one reaction per message, the latest; an empty
+  // emoji is a reaction taken back.
+  const { shown, reactionsByTarget, byWaId } = useMemo(() => {
+    const latest = new Map<string, Map<string, Message>>();
+    const byWa = new Map<string, Message>();
+    const visible: Message[] = [];
+    for (const message of messages) {
+      if (message.wa_message_id) byWa.set(message.wa_message_id, message);
+      if (message.message_type === 'reaction') {
+        const target = message.reacted_to_wa_message_id;
+        if (!target) continue;
+        const sides = latest.get(target) ?? new Map<string, Message>();
+        sides.set(message.direction, message);
+        latest.set(target, sides);
+        continue;
+      }
+      visible.push(message);
+    }
+    const reactions = new Map<string, ShownReaction[]>();
+    latest.forEach((sides, target) => {
+      const list: ShownReaction[] = [];
+      sides.forEach((reaction, direction) => {
+        if (reaction.body) list.push({ emoji: reaction.body, mine: direction === 'out' });
+      });
+      if (list.length) reactions.set(target, list);
+    });
+    return { shown: visible, reactionsByTarget: reactions, byWaId: byWa };
+  }, [messages]);
+
+  const jumpTo = useCallback((messageId: string) => {
+    document.getElementById(`msg-${messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlight(messageId);
+    window.setTimeout(() => setHighlight((current) => (current === messageId ? null : current)), 1600);
+  }, []);
+
+  const react = useCallback(async (message: Message, emoji: string) => {
+    setActionError(null);
+    try {
+      const result = await api.react(message.id, emoji);
+      if (!result.ok) setActionError(explainSendFailure(result.reason));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not react');
+    }
+  }, []);
+
   const grouped = useMemo(() => {
     const groups: { day: string; items: Message[] }[] = [];
-    for (const message of messages) {
+    for (const message of shown) {
       const day = formatDayLabel(message.created_at);
       const last = groups[groups.length - 1];
       if (last && last.day === day) last.items.push(message);
       else groups.push({ day, items: [message] });
     }
     return groups;
-  }, [messages]);
+  }, [shown]);
 
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col bg-wa-chat">
@@ -191,6 +241,11 @@ export function ChatThread({
                 {error}
               </p>
             )}
+            {actionError && (
+              <p className="mx-auto max-w-sm rounded bg-chilli-wash p-2 text-center text-xs text-chilli-dark">
+                {actionError}
+              </p>
+            )}
             {!loading && messages.length === 0 && (
               <p className="text-center text-sm text-wa-meta">No messages yet.</p>
             )}
@@ -211,7 +266,24 @@ export function ChatThread({
                     previous.direction !== message.direction ||
                     previous.sender !== message.sender;
                   return (
-                    <MessageBubble key={message.id} message={message} startsRun={startsRun} />
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      startsRun={startsRun}
+                      contactName={contactLabel(contact)}
+                      reactions={
+                        message.wa_message_id ? reactionsByTarget.get(message.wa_message_id) : undefined
+                      }
+                      quoted={
+                        message.reply_to_wa_message_id
+                          ? byWaId.get(message.reply_to_wa_message_id)
+                          : undefined
+                      }
+                      highlighted={highlight === message.id}
+                      onJumpTo={jumpTo}
+                      onReply={windowOpen ? () => setReplyTo(message) : undefined}
+                      onReact={windowOpen ? (emoji) => void react(message, emoji) : undefined}
+                    />
                   );
                 })}
               </div>
@@ -234,7 +306,10 @@ export function ChatThread({
       <Composer
         contact={contact}
         windowOpen={windowOpen}
-        onSent={() => undefined}
+        replyTo={replyTo}
+        contactName={contactLabel(contact)}
+        onCancelReply={() => setReplyTo(null)}
+        onSent={() => setReplyTo(null)}
         onTakeover={() => onContactPatch({ human_takeover: true })}
       />
     </section>
