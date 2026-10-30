@@ -1171,6 +1171,47 @@ async def test_flag_for_staff_tells_the_shop_without_going_quiet(tool_env):
     assert "still handling this chat" in result
 
 
+async def test_flagging_again_updates_the_open_task_instead_of_adding_one(tool_env):
+    """One customer's Saturday question became seven tasks on Oct 22, and every
+    reply promised again that it was being checked."""
+    fake, ctx, config = tool_env
+
+    await flag_for_staff.ainvoke({"reason": "can it arrive by Saturday?"}, config=config)
+    again = await flag_for_staff.ainvoke(
+        {"reason": "can it arrive by Saturday, and by PickMe Flash?"}, config=config
+    )
+
+    tasks = fake.rows("crm_tasks")
+    assert len(tasks) == 1
+    assert tasks[0]["title"] == "Customer needs: can it arrive by Saturday, and by PickMe Flash?"
+    assert "can it arrive by Saturday?" in tasks[0]["detail"], "the first ask is kept"
+    assert "do NOT say again that you are checking" in again
+    assert ctx.flagged is True
+
+
+async def test_a_new_flag_once_the_last_one_is_done(tool_env):
+    fake, ctx, config = tool_env
+
+    await flag_for_staff.ainvoke({"reason": "can it arrive by Saturday?"}, config=config)
+    task = fake.rows("crm_tasks")[0]
+    task["done_at"] = "2026-10-23T10:00:00+00:00"
+    await flag_for_staff.ainvoke({"reason": "wants to add a carton"}, config=config)
+
+    assert len(fake.rows("crm_tasks")) == 2
+
+
+async def test_a_payment_task_is_not_mistaken_for_a_flag(tool_env):
+    fake, ctx, config = tool_env
+    await db.crm.create_task(
+        business_id=ctx.business_id, contact_id=ctx.contact_id,
+        title="Check payment for order #27", created_by="agent", priority="high",
+    )
+
+    await flag_for_staff.ainvoke({"reason": "can it arrive by Saturday?"}, config=config)
+
+    assert len(fake.rows("crm_tasks")) == 2
+
+
 async def test_escalating_says_plainly_that_it_stops_the_agent(tool_env):
     """The tool's own description is the only thing standing between a price
     grumble and a customer being switched off, so it has to be blunt."""

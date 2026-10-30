@@ -53,6 +53,38 @@ async def _task(ctx, *, title: str, detail: str, priority: str) -> None:
         log.exception("could not create the staff task", extra={"contact_id": ctx.contact_id})
 
 
+FLAG_TITLE = "Customer needs: "
+
+
+async def _open_flag(ctx):
+    """The task an earlier flag_for_staff left for this customer, if still open."""
+    try:
+        tasks = await db.crm.list_tasks(ctx.business_id, contact_id=ctx.contact_id)
+    except Exception:
+        log.warning("could not read open tasks", exc_info=True)
+        return None
+    return next(
+        (t for t in tasks
+         if t.get("created_by") == "agent" and (t.get("title") or "").startswith(FLAG_TITLE)),
+        None,
+    )
+
+
+async def _refresh_flag(ctx, task, reason: str) -> None:
+    """Put the newest ask on the open task. The model restates the whole need
+    each time, so the newest reason is the fullest; the old ones stay in the
+    detail so nothing asked is lost."""
+    detail = (task.get("detail") or "").strip()
+    if reason not in detail:
+        detail = f"{detail}\n{reason}".strip()
+    try:
+        await db.crm.update_task(
+            ctx.business_id, str(task["id"]), {"title": f"{FLAG_TITLE}{reason}", "detail": detail}
+        )
+    except Exception:
+        log.exception("could not update the staff task", extra={"contact_id": ctx.contact_id})
+
+
 @tool
 async def flag_for_staff(reason: str, config: RunnableConfig) -> str:
     """Put something in front of a person WITHOUT going quiet.
@@ -80,7 +112,22 @@ async def flag_for_staff(reason: str, config: RunnableConfig) -> str:
     ctx.flagged = True
     ctx.flag_reason = reason
 
-    await _task(ctx, title=f"Customer needs: {reason}", detail=reason, priority="normal")
+    waiting = await _open_flag(ctx)
+    if waiting is not None:
+        # One customer's question about a Saturday delivery became seven tasks on
+        # Oct 22, one per reply, and every reply promised again that it was
+        # being checked. One task, kept current, and one promise.
+        await _refresh_flag(ctx, waiting, reason)
+        log.info("already flagged, task updated", extra={"contact_id": ctx.contact_id})
+        return (
+            "This is already on the shop's list from earlier in this chat, and has been "
+            "updated with the latest. You have already told the customer it is being "
+            "sorted: do NOT say again that you are checking, sorting or confirming it. "
+            "If this message asks about it, say in a few words that it is still being "
+            "sorted; otherwise answer only what is new in their message."
+        )
+
+    await _task(ctx, title=f"{FLAG_TITLE}{reason}", detail=reason, priority="normal")
     await db.notes.add(
         business_id=ctx.business_id,
         contact_id=ctx.contact_id,
@@ -93,7 +140,8 @@ async def flag_for_staff(reason: str, config: RunnableConfig) -> str:
         "Noted for the shop, and you are still handling this chat. Tell the customer "
         "warmly that you are getting it sorted and will confirm shortly — in your own "
         "voice, without mentioning staff, a team or a handover — and then carry on "
-        "answering anything else they ask. Do NOT stop replying."
+        "answering anything else they ask. Say it this once: later replies do not "
+        "repeat it. Do NOT stop replying."
     )
 
 
