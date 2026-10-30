@@ -473,6 +473,100 @@ async def test_messages_far_apart_are_each_answered(wired, monkeypatch):
     assert len(wa.texts) == 2
 
 
+async def test_a_message_sent_while_the_reply_is_written_gets_one_reply(wired, monkeypatch):
+    """A customer's "Yes please" and "Thank you", four seconds apart on Oct 22:
+    the second came in while the first was being answered, and she got two
+    replies saying much the same thing."""
+    import asyncio
+
+    fake, wa, calls = wired
+    monkeypatch.setattr(handlers.settings, "reply_batch_seconds", 0.01)
+    writing = asyncio.Event()
+
+    async def slow_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
+        calls.append(incoming_text)
+        if len(calls) == 1:
+            writing.set()
+            await asyncio.sleep(0.1)
+        return AgentReply(text=f"reply to {incoming_text}")
+
+    monkeypatch.setattr(handlers, "run_agent", slow_agent)
+
+    async def second():
+        await writing.wait()
+        await handlers.process_inbound(inbound("Thank you", "wamid.B"), BUSINESS_ID)
+
+    await asyncio.gather(
+        handlers.process_inbound(inbound("Yes please", "wamid.A"), BUSINESS_ID),
+        second(),
+    )
+
+    assert calls == ["Yes please", "Thank you"]
+    assert wa.texts == [("94771234567", "reply to Thank you")]
+    assert handlers._chats == {}
+
+
+async def test_a_reply_that_made_an_order_is_sent_even_if_overtaken(wired, monkeypatch):
+    """Running it again would make a second order."""
+    import asyncio
+
+    fake, wa, calls = wired
+    monkeypatch.setattr(handlers.settings, "reply_batch_seconds", 0.01)
+    writing = asyncio.Event()
+
+    async def order_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
+        calls.append(incoming_text)
+        if len(calls) == 1:
+            writing.set()
+            await asyncio.sleep(0.1)
+            return AgentReply(text="Order #27 is in", created_order={"order_number": 27})
+        return AgentReply(text=f"reply to {incoming_text}")
+
+    monkeypatch.setattr(handlers, "run_agent", order_agent)
+
+    async def second():
+        await writing.wait()
+        await handlers.process_inbound(inbound("Thank you", "wamid.B"), BUSINESS_ID)
+
+    await asyncio.gather(
+        handlers.process_inbound(inbound("yes, go ahead", "wamid.A"), BUSINESS_ID),
+        second(),
+    )
+
+    assert [t for _, t in wa.texts] == ["Order #27 is in", "reply to Thank you"]
+
+
+async def test_a_reply_is_held_back_at_most_once_in_a_row(wired, monkeypatch):
+    """A customer writing every few seconds must still hear back."""
+    import asyncio
+
+    fake, wa, calls = wired
+    monkeypatch.setattr(handlers.settings, "reply_batch_seconds", 0.01)
+    started = [asyncio.Event(), asyncio.Event()]
+
+    async def slow_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
+        calls.append(incoming_text)
+        if len(calls) <= 2:
+            started[len(calls) - 1].set()
+            await asyncio.sleep(0.1)
+        return AgentReply(text=f"reply to {incoming_text}")
+
+    monkeypatch.setattr(handlers, "run_agent", slow_agent)
+
+    async def after(event, text, wamid):
+        await event.wait()
+        await handlers.process_inbound(inbound(text, wamid), BUSINESS_ID)
+
+    await asyncio.gather(
+        handlers.process_inbound(inbound("one", "wamid.A"), BUSINESS_ID),
+        after(started[0], "two", "wamid.B"),
+        after(started[1], "three", "wamid.C"),
+    )
+
+    assert calls == ["one", "two", "three"]
+    assert [t for _, t in wa.texts] == ["reply to two", "reply to three"]
+
+
 async def test_a_sticker_does_not_swallow_the_reply_to_a_question(wired, monkeypatch):
     """A sticker never gets an answer, so it must not take over the burst."""
     import asyncio
@@ -607,3 +701,28 @@ async def test_a_reply_with_no_model_calls_records_nothing(wired):
     await handlers.process_inbound(inbound("hi", "wamid.FREE"), BUSINESS_ID)
 
     assert fake.rows("llm_usage") == []
+
+
+async def test_a_reply_identical_to_the_last_one_is_not_sent_again(wired, monkeypatch):
+    """Two messages 6s apart: the second run wrote the first reply again,
+    word for word, and the customer got it twice."""
+    fake, wa, _ = wired
+
+    async def same_agent(*, business_id, contact, incoming_text, business_name="K-Food"):
+        return AgentReply(text="Menna Shin Ramyun Black 😊 Rs. 895")
+
+    monkeypatch.setattr(handlers, "run_agent", same_agent)
+
+    await handlers.process_inbound(inbound("Mehema kiyuvata mama dekala ne ne", "wamid.1"), BUSINESS_ID)
+    await handlers.process_inbound(inbound("Balanna puluvanda", "wamid.2"), BUSINESS_ID)
+
+    assert len(wa.texts) == 1, "the repeat was not sent"
+
+
+async def test_a_different_reply_is_still_sent(wired):
+    fake, wa, _ = wired
+
+    await handlers.process_inbound(inbound("first", "wamid.1"), BUSINESS_ID)
+    await handlers.process_inbound(inbound("second", "wamid.2"), BUSINESS_ID)
+
+    assert len(wa.texts) == 2

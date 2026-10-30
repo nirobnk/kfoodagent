@@ -79,6 +79,9 @@ class _Chat:
     latest: str | None = None
     batch: list[Prepared] = field(default_factory=list)
     users: int = 0
+    # The last reply written was held back for a newer message. One in a row
+    # at most: a customer typing every few seconds must still hear back.
+    held_back: bool = False
 
 
 _chats: dict[str, _Chat] = {}
@@ -112,7 +115,10 @@ async def process_inbound(message: InboundMessage, business_id: str | None = Non
                 extra={"wa_id": message.wa_id, "wa_message_id": message.wa_message_id},
             )
             # Earlier messages were left for this one to answer. Answer them.
-            if chat.latest == message.wa_message_id and chat.batch:
+            # The batch may still be empty here and refilled by a reply being
+            # held back for this message; _answer_batch looks once it has the
+            # reply lock.
+            if chat.latest == message.wa_message_id:
                 await _answer_batch(chat, message.wa_message_id, business_id)
             return
         if prepared is None:
@@ -151,7 +157,7 @@ async def _answer_batch(chat: _Chat, wa_message_id: str, business_id: str) -> No
         if chat.latest != wa_message_id or not chat.batch:
             return
         batch, chat.batch = chat.batch, []
-        await _respond(batch, business_id)
+        await _respond(batch, business_id, chat)
 
 
 async def _prepare(message: InboundMessage, business_id: str) -> Prepared | None:
@@ -262,7 +268,9 @@ async def _record_referral(
         log.exception("could not record ad referral", extra={"contact_id": contact_id})
 
 
-async def _respond(batch: list[Prepared], business_id: str) -> None:
+async def _respond(
+    batch: list[Prepared], business_id: str, chat: _Chat | None = None
+) -> None:
     """Answer a burst of messages once, as a reply to the last of them.
 
     Every message in the burst is already saved, so the agent reads them all
@@ -314,6 +322,24 @@ async def _respond(batch: list[Prepared], business_id: str) -> None:
     if reply.escalated:
         # Re-read: escalate_to_human flipped the flag underneath us.
         contact = await db.contacts.get_by_id(business_id, contact_id) or contact
+
+    if chat is not None and _overtaken(chat, message, reply):
+        # The customer wrote again while this reply was being written. Sent,
+        # it answers half the conversation and the next run answers the rest
+        # with much the same words: a customer's "Yes please" and "Thank you",
+        # four seconds apart on Oct 22, got two "I'm getting Saturday
+        # sorted" replies. Hand these messages to the newer one instead, so
+        # one reply covers them all.
+        log.info(
+            "customer wrote again while the reply was written, holding it back",
+            extra={"contact_id": contact_id},
+        )
+        chat.batch[:0] = batch
+        chat.held_back = True
+        await _record_usage(reply, business_id, contact_id, None)
+        return
+    if chat is not None:
+        chat.held_back = False
 
     if reply.flagged:
         # Staff have a task waiting, but this chat is still the agent's. Worth
@@ -379,6 +405,15 @@ async def _respond(batch: list[Prepared], business_id: str) -> None:
                 extra={"contact_id": contact_id, "message_id": slip.saved.get("id")},
             )
 
+    if await _repeats_last_reply(contact_id, reply.text):
+        # Two messages a few seconds apart, the second arriving while the
+        # first was being answered: the second run read a chat that had
+        # already been answered and wrote the same reply again, word for
+        # word. Nethu Adikari got it twice on Oct 1. Nothing new to say.
+        log.info("reply repeats the last one, not sent", extra={"contact_id": contact_id})
+        await _record_usage(reply, business_id, contact_id, None)
+        return
+
     result = await outbound.send_text(
         business_id=business_id, contact=contact, body=reply.text, sender="agent"
     )
@@ -388,6 +423,34 @@ async def _respond(batch: list[Prepared], business_id: str) -> None:
             extra={"contact_id": contact_id, "reason": result.reason},
         )
     await _record_usage(reply, business_id, contact_id, result.wa_message_id)
+
+
+def _overtaken(chat: _Chat, message: InboundMessage, reply: AgentReply) -> bool:
+    """Whether a newer message should answer for this reply instead.
+
+    Not when the run did something the customer has to hear about: an order
+    number, a payment taken, a hand-over, or the apology for a failed run.
+    Running those again would make a second order or a second receipt.
+    """
+    if chat.latest == message.wa_message_id or chat.held_back:
+        return False
+    return not (
+        reply.failed or reply.escalated or reply.created_order or reply.payment_reported
+    )
+
+
+async def _repeats_last_reply(contact_id: str, text: str) -> bool:
+    """Whether the last thing sent to this customer was this exact text."""
+    try:
+        recent = await db.messages.history(contact_id, limit=6)
+    except Exception:
+        return False
+    last = next(
+        (m for m in reversed(recent)
+         if m.get("direction") == "out" and m.get("message_type") == "text"),
+        None,
+    )
+    return bool(last) and (last.get("body") or "").strip() == (text or "").strip()
 
 
 async def _record_usage(

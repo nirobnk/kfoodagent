@@ -157,6 +157,12 @@ def format_products(products: list[dict[str, Any]]) -> str:
     )
     if any(rule):
         text += "\n" + PACK_RULE
+    if any(len(p.get("variants") or []) > 1 for p in shown):
+        # Read out, the full row of sizes was tacked onto every answer.
+        text += (
+            "\n(Quote the single price. Give 5 Pack or carton prices only if they asked "
+            "about packs or bulk, or want five or more.)"
+        )
     if any(p.get("track_stock") for p in shown):
         text += "\n(Anything without a stock note is in stock.)"
     if len(products) > len(shown):
